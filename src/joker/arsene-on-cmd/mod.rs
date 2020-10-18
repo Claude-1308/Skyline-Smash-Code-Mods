@@ -31,17 +31,11 @@ pub fn once_per_fighter_frame(fighter: &mut L2CFighterCommon) {
                 WorkModule::set_flag(module_accessor,true,*FIGHTER_JACK_INSTANCE_WORK_ID_FLAG_ADD_REBEL_GAUGE);
                 smash::app::FighterSpecializer_Jack::add_rebel_gauge(module_accessor,smash::app::FighterEntryID(ENTRY_ID as i32),100.0);
                 DOYLE_FLAG[ENTRY_ID] = true;
-                acmd!(lua_state, {
-                    sv_animcmd::SLOW_OPPONENT(300, 360)
-                });
             }
             if ControlModule::check_button_trigger(module_accessor,*CONTROL_PAD_BUTTON_APPEAL_LW) 
             && WorkModule::is_flag(module_accessor,*FIGHTER_JACK_INSTANCE_WORK_ID_FLAG_DOYLE) && DOYLE_FLAG[ENTRY_ID] {
                 SUSPEND_DOYLE[ENTRY_ID] = true;
                 DOYLE_FLAG[ENTRY_ID] = false;
-                acmd!(lua_state, {
-                    sv_animcmd::SLOW_OPPONENT(0, 0)
-                });
             }
             if DOYLE_FLAG[ENTRY_ID] {
                 DOYLE_FRAMES[ENTRY_ID] -= 1.0;
