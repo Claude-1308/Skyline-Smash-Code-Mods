@@ -1,7 +1,10 @@
 use smash::lib::lua_const::*;
 use smash::lua2cpp::{L2CFighterCommon,L2CFighterBase};
 use smash::app::lua_bind::*;
-use acmd::acmd;
+use acmd::{acmd,acmd_func};
+use smash::hash40;
+use crate::FIGHTER_MANAGER;
+use skyline::nn::ro::LookupSymbol;
 
 static mut DOYLE_FRAMES : [f32; 8] = [3000.0; 8];
 static mut DOYLE_FLAG : [bool; 8] = [false; 8];
@@ -13,13 +16,113 @@ static mut REBEL_GAUGE : [f32; 8] = [100.0; 8];
 static mut SUSPEND_DOYLE : [bool; 8] = [false; 8];
 static mut SUSPENSION_TRIGGER : [bool; 8] = [false; 8];
 
+#[acmd_func(
+    battle_object_category = BATTLE_OBJECT_CATEGORY_FIGHTER, 
+    battle_object_kind = FIGHTER_KIND_JACK, 
+    animation = "special_lw_attack",
+    animcmd = "game_speciallwattack")]
+pub fn joker_lw_attack(fighter: &mut L2CFighterCommon) {
+    acmd!({
+        rust {
+            ENTRY_ID = WorkModule::get_int(module_accessor,*FIGHTER_INSTANCE_WORK_ID_INT_ENTRY_ID) as usize;
+            LookupSymbol(
+                &mut FIGHTER_MANAGER,
+                "_ZN3lib9SingletonIN3app14FighterManagerEE9instance_E\u{0}"
+                .as_bytes()
+                .as_ptr(),
+            );
+            let fighter_manager = *(FIGHTER_MANAGER as *mut *mut smash::app::FighterManager);
+            let mut dmg = 0.0;
+            let mut effect = smash::hash40("collision_attr_purple");
+            if FighterInformation::is_operation_cpu(FighterManager::get_fighter_information(fighter_manager,smash::app::FighterEntryID(ENTRY_ID as i32))) == false {
+                dmg = 4.0;
+                effect = smash::hash40("collision_attr_slip");
+            }
+            else {
+                dmg = 2.4;
+                effect = smash::hash40("collision_attr_purple");
+            }
+        }
+        frame(Frame=1)
+        if(is_excute) {
+            WHOLE_HIT(HIT_STATUS_XLU)
+        }
+        frame(Frame=8)
+        if(is_excute) {
+            ATTACK(ID=0, Part=0, Bone=hash40("top"), Damage=dmg, Angle=50, KBG=100, FKB=82, BKB=0, Size=12.0, X=0.0, Y=10.0, Z=-3.0, X2=0.0, Y2=10.0, Z2=3.0, Hitlag=1.25, SDI=0.0, Clang_Rebound=ATTACK_SETOFF_KIND_OFF, FacingRestrict=ATTACK_LR_CHECK_POS, SetWeight=false, ShieldDamage=0, Trip=0.0, Rehit=0, Reflectable=false, Absorbable=false, Flinchless=false, DisableHitlag=false, Direct_Hitbox=true, Ground_or_Air=COLLISION_SITUATION_MASK_GA, Hitbits=COLLISION_CATEGORY_MASK_ALL, CollisionPart=COLLISION_PART_MASK_ALL, FriendlyFire=false, Effect=effect, SFXLevel=ATTACK_SOUND_LEVEL_M, SFXType=COLLISION_SOUND_ATTR_FIRE, Type=ATTACK_REGION_NONE)
+        }
+        wait(Frames=2)
+        if(is_excute) {
+            AttackModule::clear_all()
+        }
+        frame(Frame=15)
+        if(is_excute) {
+            WHOLE_HIT(HIT_STATUS_NORMAL)
+        }
+    });
+}
+
+#[acmd_func(
+    battle_object_category = BATTLE_OBJECT_CATEGORY_FIGHTER, 
+    battle_object_kind = FIGHTER_KIND_JACK, 
+    animation = "special_air_lw_attack",
+    animcmd = "game_specialairlwattack")]
+pub fn joker_air_lw_attack(fighter: &mut L2CFighterCommon) {
+    acmd!({
+        rust {
+            ENTRY_ID = WorkModule::get_int(module_accessor,*FIGHTER_INSTANCE_WORK_ID_INT_ENTRY_ID) as usize;
+            LookupSymbol(
+                &mut FIGHTER_MANAGER,
+                "_ZN3lib9SingletonIN3app14FighterManagerEE9instance_E\u{0}"
+                .as_bytes()
+                .as_ptr(),
+            );
+            let fighter_manager = *(FIGHTER_MANAGER as *mut *mut smash::app::FighterManager);
+            let mut dmg = 0.0;
+            let mut effect = smash::hash40("collision_attr_purple");
+            if FighterInformation::is_operation_cpu(FighterManager::get_fighter_information(fighter_manager,smash::app::FighterEntryID(ENTRY_ID as i32))) == false {
+                dmg = 4.0;
+                effect = smash::hash40("collision_attr_slip");
+            }
+            else {
+                dmg = 2.4;
+                effect = smash::hash40("collision_attr_purple");
+            }
+        }
+        frame(Frame=1)
+        if(is_excute) {
+            WHOLE_HIT(HIT_STATUS_XLU)
+        }
+        frame(Frame=8)
+        if(is_excute) {
+            ATTACK(ID=0, Part=0, Bone=hash40("top"), Damage=dmg, Angle=50, KBG=100, FKB=82, BKB=0, Size=12.0, X=0.0, Y=10.0, Z=-3.0, X2=0.0, Y2=10.0, Z2=3.0, Hitlag=1.25, SDI=0.0, Clang_Rebound=ATTACK_SETOFF_KIND_OFF, FacingRestrict=ATTACK_LR_CHECK_POS, SetWeight=false, ShieldDamage=0, Trip=0.0, Rehit=0, Reflectable=false, Absorbable=false, Flinchless=false, DisableHitlag=false, Direct_Hitbox=true, Ground_or_Air=COLLISION_SITUATION_MASK_GA, Hitbits=COLLISION_CATEGORY_MASK_ALL, CollisionPart=COLLISION_PART_MASK_ALL, FriendlyFire=false, Effect=effect, SFXLevel=ATTACK_SOUND_LEVEL_M, SFXType=COLLISION_SOUND_ATTR_FIRE, Type=ATTACK_REGION_NONE)
+        }
+        wait(Frames=2)
+        if(is_excute) {
+            AttackModule::clear_all()
+        }
+        frame(Frame=15)
+        if(is_excute) {
+            WHOLE_HIT(HIT_STATUS_NORMAL)
+        }
+    });
+}
+
 pub fn once_per_fighter_frame(fighter: &mut L2CFighterCommon) {
-    unsafe{
+    unsafe {
         let lua_state = fighter.lua_state_agent;
         let module_accessor = smash::app::sv_system::battle_object_module_accessor(lua_state);
         let fighter_kind = smash::app::utility::get_kind(module_accessor);
         ENTRY_ID = WorkModule::get_int(module_accessor,*FIGHTER_INSTANCE_WORK_ID_INT_ENTRY_ID) as usize;
-        if fighter_kind == *FIGHTER_KIND_JACK {
+        LookupSymbol(
+            &mut FIGHTER_MANAGER,
+            "_ZN3lib9SingletonIN3app14FighterManagerEE9instance_E\u{0}"
+            .as_bytes()
+            .as_ptr(),
+        );
+        let fighter_manager = *(FIGHTER_MANAGER as *mut *mut smash::app::FighterManager);
+        if fighter_kind == *FIGHTER_KIND_JACK
+        && FighterInformation::is_operation_cpu(FighterManager::get_fighter_information(fighter_manager,smash::app::FighterEntryID(ENTRY_ID as i32))) == false {
             WorkModule::set_flag(module_accessor,false,*FIGHTER_JACK_INSTANCE_WORK_ID_FLAG_ADD_REBEL_GAUGE);
             if MotionModule::motion_kind(module_accessor) == smash::hash40("appeal_hi_l") || MotionModule::motion_kind(module_accessor) == smash::hash40("appeal_hi_r")
             || MotionModule::motion_kind(module_accessor) == smash::hash40("appeal_lw_l") || MotionModule::motion_kind(module_accessor) == smash::hash40("appeal_lw_r")
@@ -92,7 +195,7 @@ pub fn once_per_fighter_frame(fighter: &mut L2CFighterCommon) {
 }
 
 pub fn once_per_weapon_frame(weapon: &mut L2CFighterBase) {
-    unsafe{
+    unsafe {
         let weapon_module_accessor = smash::app::sv_system::battle_object_module_accessor(weapon.lua_state_agent);
         let owner_module_accessor = smash::app::sv_battle_object::module_accessor((WorkModule::get_int(weapon_module_accessor, *WEAPON_INSTANCE_WORK_ID_INT_LINK_OWNER)) as u32);
         let weapon_kind = smash::app::utility::get_kind(weapon_module_accessor);
@@ -120,6 +223,7 @@ pub fn once_per_weapon_frame(weapon: &mut L2CFighterBase) {
 }
 
 pub fn install() {
+    acmd::add_hooks!(joker_air_lw_attack,joker_lw_attack);
     acmd::add_custom_hooks!(once_per_fighter_frame);
     acmd::add_custom_weapon_hooks!(once_per_weapon_frame);
 }
