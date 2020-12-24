@@ -3,17 +3,17 @@ use smash::lua2cpp::{L2CFighterCommon,L2CFighterBase};
 use smash::lib::lua_const::*;
 use acmd::{acmd,acmd_func};
 use smash::hash40;
+use smash::app::BattleObjectModuleAccessor;
 
-static mut FIGHTER_MASTER_STATUS_KIND_APPEAL_HI_FLAG_SHIELD : [bool; 8] = [false; 8];
-static mut FIGHTER_MASTER_STATUS_KIND_APPEAL_HI_FLAG_CONTINUE_MOTION : [bool; 8] = [false; 8];
-static mut FIGHTER_MASTER_STATUS_KIND_APPEAL_HI_CHECK_HIT : [bool; 8] = [false; 8];
-static mut FIGHTER_MASTER_STATUS_KIND_APPEAL_HI_HIT : [bool; 8] = [false; 8];
-static mut FIGHTER_MASTER_STATUS_KIND_APPEAL_HI_FLOAT_SHIELD : [f32; 8] = [65.0; 8];
-static mut FIGHTER_MASTER_STATUS_KIND_APPEAL_HI_INVINCIBILITY : [bool; 8] = [false; 8];
-static mut FIGHTER_MASTER_STATUS_KIND_APPEAL_HI_WORK_FLOAT_ATTACK_POWER : [f32; 8] = [0.0; 8];
-static mut FIGHTER_MASTER_STATUS_KIND_APPEAL_HI_ATTACKER_ENTRY_ID : [i32; 8] = [0; 8];
-static mut FIGHTER_MASTER_STATUS_KIND_APPEAL_HI_MOTION_CHANGE : [bool; 8] = [false; 8];
-static mut FIGHTER_MASTER_STATUS_KIND_APPEAL_HI_SITUATION_PREVIOUS : [i32; 8] = [0; 8];
+static mut COUNTER_START : [bool; 8] = [false; 8];
+static mut CHECK_HIT : [bool; 8] = [false; 8];
+static mut COUNTER_HIT : [bool; 8] = [false; 8];
+static mut COUNTER_TIMER : [f32; 8] = [65.0; 8];
+static mut COUNTER_INVINCIBILITY : [bool; 8] = [false; 8];
+static mut COUNTER_POWER : [f32; 8] = [0.0; 8];
+static mut ATTACKER_ENTRY_ID : [i32; 8] = [0; 8];
+static mut ATTACKED : [bool; 8] = [false; 8];
+static mut MOTION_CHANGE : [bool; 8] = [false; 8];
 static mut FIGHTERS : [u64; 8] = [0; 8];
 static mut ENTRY_ID : usize = 0;
 
@@ -33,7 +33,7 @@ static mut ENTRY_ID : usize = 0;
                 let bkb : i32;
                 let hitlag : f32;
                 let size : f32;
-                if FIGHTER_MASTER_STATUS_KIND_APPEAL_HI_WORK_FLOAT_ATTACK_POWER[ENTRY_ID] > 0.0 && FIGHTER_MASTER_STATUS_KIND_APPEAL_HI_WORK_FLOAT_ATTACK_POWER[ENTRY_ID] < 9.0 {
+                if COUNTER_POWER[ENTRY_ID] > 0.0 && COUNTER_POWER[ENTRY_ID] < 9.0 {
                     dmgarrow = 9.0;
                     mul = 0;
                     kbg = 90;
@@ -41,8 +41,8 @@ static mut ENTRY_ID : usize = 0;
                     hitlag = 1.5;
                     size = 10.0;
                 }
-                else if FIGHTER_MASTER_STATUS_KIND_APPEAL_HI_WORK_FLOAT_ATTACK_POWER[ENTRY_ID] > 9.0 {
-                    dmgarrow = FIGHTER_MASTER_STATUS_KIND_APPEAL_HI_WORK_FLOAT_ATTACK_POWER[ENTRY_ID] * 1.25;
+                else if COUNTER_POWER[ENTRY_ID] > 9.0 {
+                    dmgarrow = COUNTER_POWER[ENTRY_ID] * 1.25;
                     mul = 0;
                     kbg = 90;
                     bkb = 50;
@@ -81,172 +81,94 @@ pub fn once_per_fighter_frame(fighter: &mut L2CFighterCommon) {
         FIGHTERS[ENTRY_ID] = (&mut *module_accessor as *mut smash::app::BattleObjectModuleAccessor) as u64;
         if StatusModule::status_kind(module_accessor) == *FIGHTER_STATUS_KIND_FINAL {
             for i in 0..8 {
-                if FIGHTER_MASTER_STATUS_KIND_APPEAL_HI_FLAG_SHIELD[i] {
-                    FIGHTER_MASTER_STATUS_KIND_APPEAL_HI_FLOAT_SHIELD[i] = -1.0;
+                if COUNTER_START[i] {
+                    COUNTER_TIMER[i] = -1.0;
                 }
             }
         }
         if fighter_kind == *FIGHTER_KIND_MASTER {
             if ControlModule::check_button_trigger(module_accessor,*CONTROL_PAD_BUTTON_APPEAL_HI)
             || ControlModule::check_button_on(module_accessor,*CONTROL_PAD_BUTTON_APPEAL_HI) {
-                if FIGHTER_MASTER_STATUS_KIND_APPEAL_HI_FLAG_SHIELD[ENTRY_ID] == false {
-                    if CaptureModule::is_capture(module_accessor)
-                    || StatusModule::prev_status_kind(module_accessor,0) == *FIGHTER_STATUS_KIND_THROWN
-                    || StatusModule::status_kind(module_accessor) == *FIGHTER_STATUS_KIND_DOWN
-                    || StatusModule::status_kind(module_accessor) == *FIGHTER_STATUS_KIND_DOWN_WAIT
-                    || StatusModule::status_kind(module_accessor) == *FIGHTER_STATUS_KIND_DOWN_DAMAGE
-                    || StatusModule::status_kind(module_accessor) == *FIGHTER_STATUS_KIND_DOWN_CONTINUE
-                    || StatusModule::status_kind(module_accessor) == *FIGHTER_STATUS_KIND_DOWN_STAND_ATTACK
-                    || StatusModule::status_kind(module_accessor) == *FIGHTER_STATUS_KIND_DOWN_WAIT_CONTINUE
-                    || StatusModule::status_kind(module_accessor) == *FIGHTER_STATUS_KIND_DOWN_EAT
-                    || StatusModule::status_kind(module_accessor) == *FIGHTER_STATUS_KIND_DOWN_SPOT
-                    || StatusModule::status_kind(module_accessor) == *FIGHTER_STATUS_KIND_DOWN_STAND
-                    || StatusModule::status_kind(module_accessor) == *FIGHTER_STATUS_KIND_DOWN_STAND_FB
-                    || StatusModule::status_kind(module_accessor) == *FIGHTER_STATUS_KIND_DOWN_REFLECT_LR
-                    || StatusModule::status_kind(module_accessor) == *FIGHTER_STATUS_KIND_DAMAGE 
-                    || StatusModule::status_kind(module_accessor) == *FIGHTER_STATUS_KIND_DAMAGE_AIR 
-                    || StatusModule::status_kind(module_accessor) == *FIGHTER_STATUS_KIND_DAMAGE_FLY 
-                    || StatusModule::status_kind(module_accessor) == *FIGHTER_STATUS_KIND_DAMAGE_FLY_ROLL
-                    || StatusModule::status_kind(module_accessor) == *FIGHTER_STATUS_KIND_DAMAGE_FLY_METEOR 
-                    || StatusModule::status_kind(module_accessor) == *FIGHTER_STATUS_KIND_DAMAGE_FLY_REFLECT_LR
-                    || StatusModule::status_kind(module_accessor) == *FIGHTER_STATUS_KIND_DAMAGE_FLY_REFLECT_U 
-                    || StatusModule::status_kind(module_accessor) == *FIGHTER_STATUS_KIND_DAMAGE_FLY_REFLECT_D
-                    || StatusModule::status_kind(module_accessor) == *FIGHTER_STATUS_KIND_DAMAGE_FALL
-                    || StatusModule::status_kind(module_accessor) == *FIGHTER_STATUS_KIND_SLIP
-                    || StatusModule::status_kind(module_accessor) == *FIGHTER_STATUS_KIND_SWIM
-                    || StatusModule::status_kind(module_accessor) == *FIGHTER_STATUS_KIND_FINAL
-                    || StatusModule::status_kind(module_accessor) == *FIGHTER_STATUS_KIND_SLEEP
-                    || StatusModule::status_kind(module_accessor) == *FIGHTER_STATUS_KIND_ESCAPE_B
-                    || StatusModule::status_kind(module_accessor) == *FIGHTER_STATUS_KIND_ESCAPE_F
-                    || StatusModule::status_kind(module_accessor) == *FIGHTER_STATUS_KIND_FURAFURA
-                    || StatusModule::status_kind(module_accessor) == *FIGHTER_STATUS_KIND_CAPTURE_MIMIKKYU
-                    || StatusModule::status_kind(module_accessor) == *FIGHTER_STATUS_KIND_CAPTURE_JACK_WIRE
-                    || StatusModule::status_kind(module_accessor) == *FIGHTER_STATUS_KIND_CAPTURE_MASTERHAND
-                    || StatusModule::status_kind(module_accessor) == *FIGHTER_STATUS_KIND_CAPTURE_MASTER_SWORD
-                    || StatusModule::status_kind(module_accessor) == *FIGHTER_STATUS_KIND_CLIFF_WAIT
-                    || StatusModule::status_kind(module_accessor) == *FIGHTER_STATUS_KIND_CLIFF_CATCH
-                    || StatusModule::status_kind(module_accessor) == *FIGHTER_STATUS_KIND_CLIFF_CLIMB
-                    || StatusModule::status_kind(module_accessor) == *FIGHTER_STATUS_KIND_CLIFF_JUMP1
-                    || StatusModule::status_kind(module_accessor) == *FIGHTER_STATUS_KIND_CLIFF_JUMP2
-                    || StatusModule::status_kind(module_accessor) == *FIGHTER_STATUS_KIND_CLIFF_JUMP3
-                    || StatusModule::status_kind(module_accessor) == *FIGHTER_STATUS_KIND_CLIFF_ATTACK
-                    || StatusModule::status_kind(module_accessor) == *FIGHTER_STATUS_KIND_CLIFF_ESCAPE
-                    || StatusModule::status_kind(module_accessor) == *FIGHTER_STATUS_KIND_CLIFF_ROBBED
-                    || StatusModule::status_kind(module_accessor) == *FIGHTER_STATUS_KIND_CLIFF_CATCH_MOVE
-                    || StatusModule::status_kind(module_accessor) == *FIGHTER_STATUS_KIND_THROW
-                    || StatusModule::status_kind(module_accessor) == *FIGHTER_STATUS_KIND_SWALLOWED
-                    || StatusModule::status_kind(module_accessor) == *FIGHTER_STATUS_KIND_AIR_LASSO
-                    || StatusModule::status_kind(module_accessor) == *FIGHTER_STATUS_KIND_CATCH_ATTACK
-                    || StatusModule::status_kind(module_accessor) == *FIGHTER_STATUS_KIND_CATCHED_REFLET
-                    || StatusModule::status_kind(module_accessor) == *FIGHTER_STATUS_KIND_CATCHED_RIDLEY
-                    || StatusModule::status_kind(module_accessor) == *FIGHTER_STATUS_KIND_ATTACK
-                    || StatusModule::status_kind(module_accessor) == *FIGHTER_STATUS_KIND_ATTACK_S3
-                    || StatusModule::status_kind(module_accessor) == *FIGHTER_STATUS_KIND_ATTACK_S4
-                    || StatusModule::status_kind(module_accessor) == *FIGHTER_STATUS_KIND_ATTACK_100
-                    || StatusModule::status_kind(module_accessor) == *FIGHTER_STATUS_KIND_ATTACK_AIR
-                    || StatusModule::status_kind(module_accessor) == *FIGHTER_STATUS_KIND_ATTACK_HI3
-                    || StatusModule::status_kind(module_accessor) == *FIGHTER_STATUS_KIND_ATTACK_HI4
-                    || StatusModule::status_kind(module_accessor) == *FIGHTER_STATUS_KIND_ATTACK_LW3
-                    || StatusModule::status_kind(module_accessor) == *FIGHTER_STATUS_KIND_ATTACK_LW4
-                    || StatusModule::status_kind(module_accessor) == *FIGHTER_STATUS_KIND_ATTACK_DASH
-                    || StatusModule::status_kind(module_accessor) == *FIGHTER_STATUS_KIND_ATTACK_S4_HOLD
-                    || StatusModule::status_kind(module_accessor) == *FIGHTER_STATUS_KIND_ATTACK_HI4_HOLD
-                    || StatusModule::status_kind(module_accessor) == *FIGHTER_STATUS_KIND_ATTACK_LW4_HOLD
-                    || MotionModule::motion_kind(module_accessor) == smash::hash40("guard_on")
-                    || MotionModule::motion_kind(module_accessor) == smash::hash40("guard_damage")
-                    || MotionModule::motion_kind(module_accessor) == smash::hash40("attack_s4")
-                    || MotionModule::motion_kind(module_accessor) == smash::hash40("attack_s4_hi")
-                    || MotionModule::motion_kind(module_accessor) == smash::hash40("attack_s4_lw")
-                    || MotionModule::motion_kind(module_accessor) == smash::hash40("special_n_start")
-                    || MotionModule::motion_kind(module_accessor) == smash::hash40("special_n")
-                    || MotionModule::motion_kind(module_accessor) == smash::hash40("special_n_max")
-                    || MotionModule::motion_kind(module_accessor) == smash::hash40("special_n_cancel")
-                    || MotionModule::motion_kind(module_accessor) == smash::hash40("special_air_n_start")
-                    || MotionModule::motion_kind(module_accessor) == smash::hash40("special_air_n")
-                    || MotionModule::motion_kind(module_accessor) == smash::hash40("special_air_n_max")
-                    || MotionModule::motion_kind(module_accessor) == smash::hash40("special_air_n_cancel")
-                    || MotionModule::motion_kind(module_accessor) == smash::hash40("special_air_n_jump_cancel")
-                    || MotionModule::motion_kind(module_accessor) == smash::hash40("special_lw")
-                    || MotionModule::motion_kind(module_accessor) == smash::hash40("special_lw_hit")
-                    || MotionModule::motion_kind(module_accessor) == smash::hash40("special_lw_turn")
-                    || MotionModule::motion_kind(module_accessor) == smash::hash40("special_lw_landing2")
-                    || MotionModule::motion_kind(module_accessor) == smash::hash40("special_air_lw")
-                    || MotionModule::motion_kind(module_accessor) == smash::hash40("special_air_lw_hit")
-                    || MotionModule::motion_kind(module_accessor) == smash::hash40("special_air_lw_turn")
-                    || MotionModule::motion_kind(module_accessor) == smash::hash40("special_hi")
-                    || MotionModule::motion_kind(module_accessor) == smash::hash40("special_air_hi")
-                    || MotionModule::motion_kind(module_accessor) == smash::hash40("special_air_hi_overtake")
-                    || MotionModule::motion_kind(module_accessor) == smash::hash40("special_s_start")
-                    || MotionModule::motion_kind(module_accessor) == smash::hash40("special_s_landing")
-                    || MotionModule::motion_kind(module_accessor) == smash::hash40("special_s_front")
-                    || MotionModule::motion_kind(module_accessor) == smash::hash40("special_s_front_dash")
-                    || MotionModule::motion_kind(module_accessor) == smash::hash40("special_air_s_start")
-                    || MotionModule::motion_kind(module_accessor) == smash::hash40("special_air_s_front")
-                    || MotionModule::motion_kind(module_accessor) == smash::hash40("special_air_s_front_dash")
-                    || WorkModule::is_flag(module_accessor,*FIGHTER_INSTANCE_WORK_ID_FLAG_CAPTURE_YOSHI) {
-                        FIGHTER_MASTER_STATUS_KIND_APPEAL_HI_FLAG_SHIELD[ENTRY_ID] = false;
-                        FIGHTER_MASTER_STATUS_KIND_APPEAL_HI_FLAG_CONTINUE_MOTION[ENTRY_ID] = false;
+                if COUNTER_START[ENTRY_ID] == false {
+                    if StatusModule::situation_kind(module_accessor) == *SITUATION_KIND_GROUND {
+                        if StatusModule::status_kind(module_accessor) == *FIGHTER_STATUS_KIND_WAIT
+                        || StatusModule::status_kind(module_accessor) == *FIGHTER_STATUS_KIND_RUN
+                        || StatusModule::status_kind(module_accessor) == *FIGHTER_STATUS_KIND_DASH {
+                            COUNTER_START[ENTRY_ID] = true;
+                            ArticleModule::generate_article(module_accessor,*FIGHTER_MASTER_GENERATE_ARTICLE_BOW,false,0);
+                        }
                     }
-                    else {
-                        StatusModule::init_settings(module_accessor,smash::app::SituationKind(*SITUATION_KIND_NONE),*FIGHTER_KINETIC_TYPE_UNIQ,*GROUND_CORRECT_KIND_KEEP as u32,smash::app::GroundCliffCheckKind(*GROUND_CLIFF_CHECK_KIND_NONE),true,*FIGHTER_STATUS_WORK_KEEP_FLAG_NONE_FLAG,*FIGHTER_STATUS_WORK_KEEP_FLAG_NONE_INT,*FIGHTER_STATUS_WORK_KEEP_FLAG_NONE_FLOAT as i32,0);
-                        FighterStatusModuleImpl::set_fighter_status_data(module_accessor,false,*FIGHTER_TREADED_KIND_NO_REAC,false,false,false,*FIGHTER_DONKEY_STATUS_KIND_SUPER_LIFT_WALK as u64,0,*FIGHTER_POWER_UP_ATTACK_BIT_SPECIAL_N as u32,0);
-                        FIGHTER_MASTER_STATUS_KIND_APPEAL_HI_FLAG_SHIELD[ENTRY_ID] = true;
-                        FIGHTER_MASTER_STATUS_KIND_APPEAL_HI_FLAG_CONTINUE_MOTION[ENTRY_ID] = true;
-                        ArticleModule::generate_article(module_accessor,*FIGHTER_MASTER_GENERATE_ARTICLE_BOW,false,0);
+                    else if StatusModule::situation_kind(module_accessor) == *SITUATION_KIND_AIR {
+                        if StatusModule::prev_status_kind(module_accessor,0) != *FIGHTER_STATUS_KIND_THROWN
+                        && StatusModule::status_kind(module_accessor) != *FIGHTER_STATUS_KIND_DAMAGE_AIR 
+                        && StatusModule::status_kind(module_accessor) != *FIGHTER_STATUS_KIND_DAMAGE_FLY 
+                        && StatusModule::status_kind(module_accessor) != *FIGHTER_STATUS_KIND_DAMAGE_FLY_ROLL
+                        && StatusModule::status_kind(module_accessor) != *FIGHTER_STATUS_KIND_DAMAGE_FLY_METEOR 
+                        && StatusModule::status_kind(module_accessor) != *FIGHTER_STATUS_KIND_DAMAGE_FLY_REFLECT_LR
+                        && StatusModule::status_kind(module_accessor) != *FIGHTER_STATUS_KIND_DAMAGE_FLY_REFLECT_U 
+                        && StatusModule::status_kind(module_accessor) != *FIGHTER_STATUS_KIND_DAMAGE_FLY_REFLECT_D
+                        && StatusModule::status_kind(module_accessor) != *FIGHTER_STATUS_KIND_DAMAGE_FALL
+                        && StatusModule::status_kind(module_accessor) != *FIGHTER_STATUS_KIND_FINAL
+                        && StatusModule::status_kind(module_accessor) != *FIGHTER_STATUS_KIND_SLEEP
+                        && StatusModule::status_kind(module_accessor) != *FIGHTER_STATUS_KIND_ESCAPE_B
+                        && StatusModule::status_kind(module_accessor) != *FIGHTER_STATUS_KIND_ESCAPE_F
+                        && StatusModule::status_kind(module_accessor) != *FIGHTER_STATUS_KIND_CAPTURE_JACK_WIRE
+                        && StatusModule::status_kind(module_accessor) != *FIGHTER_STATUS_KIND_CAPTURE_MASTERHAND
+                        && StatusModule::status_kind(module_accessor) != *FIGHTER_STATUS_KIND_CAPTURE_MASTER_SWORD
+                        && StatusModule::status_kind(module_accessor) != *FIGHTER_STATUS_KIND_SWALLOWED
+                        && StatusModule::status_kind(module_accessor) != *FIGHTER_STATUS_KIND_AIR_LASSO
+                        && StatusModule::status_kind(module_accessor) != *FIGHTER_STATUS_KIND_CATCHED_REFLET
+                        && StatusModule::status_kind(module_accessor) != *FIGHTER_STATUS_KIND_CATCHED_RIDLEY
+                        && StatusModule::status_kind(module_accessor) != *FIGHTER_STATUS_KIND_ATTACK_AIR
+                        && MotionModule::motion_kind(module_accessor) != smash::hash40("special_air_n_start")
+                        && MotionModule::motion_kind(module_accessor) != smash::hash40("special_air_n")
+                        && MotionModule::motion_kind(module_accessor) != smash::hash40("special_air_n_max")
+                        && MotionModule::motion_kind(module_accessor) != smash::hash40("special_air_n_cancel")
+                        && MotionModule::motion_kind(module_accessor) != smash::hash40("special_air_n_jump_cancel")
+                        && MotionModule::motion_kind(module_accessor) != smash::hash40("special_lw_landing2")
+                        && MotionModule::motion_kind(module_accessor) != smash::hash40("special_air_lw")
+                        && MotionModule::motion_kind(module_accessor) != smash::hash40("special_air_lw_hit")
+                        && MotionModule::motion_kind(module_accessor) != smash::hash40("special_air_lw_turn")
+                        && MotionModule::motion_kind(module_accessor) != smash::hash40("special_air_hi")
+                        && MotionModule::motion_kind(module_accessor) != smash::hash40("special_air_hi_overtake")
+                        && MotionModule::motion_kind(module_accessor) != smash::hash40("special_s_landing")
+                        && MotionModule::motion_kind(module_accessor) != smash::hash40("special_air_s_start")
+                        && MotionModule::motion_kind(module_accessor) != smash::hash40("special_air_s_front")
+                        && MotionModule::motion_kind(module_accessor) != smash::hash40("special_air_s_front_dash")
+                        && WorkModule::is_flag(module_accessor,*FIGHTER_INSTANCE_WORK_ID_FLAG_CAPTURE_YOSHI) == false {
+                            COUNTER_START[ENTRY_ID] = true;
+                            ArticleModule::generate_article(module_accessor,*FIGHTER_MASTER_GENERATE_ARTICLE_BOW,false,0);
+                        }
                     }
                 }
             }
-            if FIGHTER_MASTER_STATUS_KIND_APPEAL_HI_FLAG_SHIELD[ENTRY_ID]
-            && FIGHTER_MASTER_STATUS_KIND_APPEAL_HI_FLOAT_SHIELD[ENTRY_ID] > 58.0 {
+            if COUNTER_START[ENTRY_ID]
+            && COUNTER_TIMER[ENTRY_ID] > 58.0 {
                 if StopModule::is_damage(module_accessor) {
-                    FIGHTER_MASTER_STATUS_KIND_APPEAL_HI_FLOAT_SHIELD[ENTRY_ID] = -1.0;
+                    COUNTER_TIMER[ENTRY_ID] = -1.0;
                 }
-                if FIGHTER_MASTER_STATUS_KIND_APPEAL_HI_FLOAT_SHIELD[ENTRY_ID] == 59.0 {
-                    FIGHTER_MASTER_STATUS_KIND_APPEAL_HI_FLAG_CONTINUE_MOTION[ENTRY_ID] = false;
-                    FIGHTER_MASTER_STATUS_KIND_APPEAL_HI_CHECK_HIT[ENTRY_ID] = true;
-                }
-            }
-            if FIGHTER_MASTER_STATUS_KIND_APPEAL_HI_FLAG_CONTINUE_MOTION[ENTRY_ID] {
-                if FIGHTER_MASTER_STATUS_KIND_APPEAL_HI_FLOAT_SHIELD[ENTRY_ID] == 63.0 {
-                    if StatusModule::situation_kind(module_accessor) == *SITUATION_KIND_AIR {
-                        GroundModule::correct(module_accessor,smash::app::GroundCorrectKind(*GROUND_CORRECT_KIND_AIR));
-                    }
-                    else {
-                        KineticModule::change_kinetic(module_accessor,*FIGHTER_KINETIC_TYPE_MOTION_IGNORE_NORMAL);
-                        GroundModule::correct(module_accessor,smash::app::GroundCorrectKind(*GROUND_CORRECT_KIND_GROUND_CLIFF_STOP));
-                    }
-                }
-                else if FIGHTER_MASTER_STATUS_KIND_APPEAL_HI_FLOAT_SHIELD[ENTRY_ID] == 60.0 {
+                if COUNTER_TIMER[ENTRY_ID] == 59.0 {
+                    CHECK_HIT[ENTRY_ID] = true;
                     if StatusModule::situation_kind(module_accessor) == *SITUATION_KIND_AIR {
                         let speed  = smash::phx::Vector3f { x: 0.2, y: 0.2, z: 0.2 };
                         KineticModule::mul_accel(module_accessor, &speed, *FIGHTER_KINETIC_ENERGY_ID_GRAVITY);
                         KineticModule::mul_speed(module_accessor, &speed, *FIGHTER_KINETIC_ENERGY_ID_GRAVITY);
-                        KineticModule::mul_accel(module_accessor, &speed, *FIGHTER_KINETIC_ENERGY_ID_MOTION);
-                        KineticModule::mul_speed(module_accessor, &speed, *FIGHTER_KINETIC_ENERGY_ID_MOTION);
-                        KineticModule::mul_accel(module_accessor, &speed, *FIGHTER_KINETIC_ENERGY_ID_CONTROL);
-                        KineticModule::mul_speed(module_accessor, &speed, *FIGHTER_KINETIC_ENERGY_ID_CONTROL);
-                    }
-                    else if StatusModule::situation_kind(module_accessor) == *SITUATION_KIND_GROUND {
-                        KineticModule::unable_energy(module_accessor,*FIGHTER_KINETIC_ENERGY_ID_GROUND_MOVEMENT);
-                        KineticModule::unable_energy(module_accessor,*FIGHTER_KINETIC_ENERGY_ID_STOP);
-                        KineticModule::unable_energy(module_accessor,*FIGHTER_KINETIC_ENERGY_ID_CONTROL);
-                        KineticModule::unable_energy(module_accessor,*FIGHTER_KINETIC_ENERGY_ID_MOTION);
                     }
                 }
             }
-            if FIGHTER_MASTER_STATUS_KIND_APPEAL_HI_CHECK_HIT[ENTRY_ID] {
-                DamageModule::set_damage_lock(module_accessor,true);
+            if CHECK_HIT[ENTRY_ID] {
+                DamageModule::set_damage_mul(module_accessor,0.0001);
                 if CaptureModule::is_capture(module_accessor)
                 || StatusModule::prev_status_kind(module_accessor,0) == *FIGHTER_STATUS_KIND_THROWN
                 || WorkModule::is_flag(module_accessor,*FIGHTER_INSTANCE_WORK_ID_FLAG_CAPTURE_YOSHI) {
-                    FIGHTER_MASTER_STATUS_KIND_APPEAL_HI_FLOAT_SHIELD[ENTRY_ID] = -1.0;
+                    COUNTER_TIMER[ENTRY_ID] = -1.0;
                 }
                 else if WorkModule::get_float(module_accessor,*FIGHTER_INSTANCE_WORK_ID_FLOAT_SUCCEED_HIT_DAMAGE) > 0.0 {
-                    FIGHTER_MASTER_STATUS_KIND_APPEAL_HI_HIT[ENTRY_ID] = true;
+                    COUNTER_HIT[ENTRY_ID] = true;
                 }
             }
-            if FIGHTER_MASTER_STATUS_KIND_APPEAL_HI_HIT[ENTRY_ID] {
-                FIGHTER_MASTER_STATUS_KIND_APPEAL_HI_WORK_FLOAT_ATTACK_POWER[ENTRY_ID] = WorkModule::get_float(module_accessor,*FIGHTER_INSTANCE_WORK_ID_FLOAT_SUCCEED_HIT_DAMAGE);
+            if COUNTER_HIT[ENTRY_ID] {
+                COUNTER_POWER[ENTRY_ID] = WorkModule::get_float(module_accessor,*FIGHTER_INSTANCE_WORK_ID_FLOAT_SUCCEED_HIT_DAMAGE) * 10000.0;
                 let mut attacker_id = WorkModule::get_int(module_accessor, *FIGHTER_INSTANCE_WORK_ID_INT_SUCCEED_ATTACKER_ENTRY_ID);
                 let mut mask: u32 = 0x1;
                 let mut counter = 0;
@@ -263,10 +185,10 @@ pub fn once_per_fighter_frame(fighter: &mut L2CFighterCommon) {
                 if array_id_f.is_normal() || array_id_f == 0.0 {
                     array_id_i = array_id_f as i32;
                 }
-                FIGHTER_MASTER_STATUS_KIND_APPEAL_HI_ATTACKER_ENTRY_ID[ENTRY_ID] = array_id_i;
-                if FIGHTER_MASTER_STATUS_KIND_APPEAL_HI_ATTACKER_ENTRY_ID[ENTRY_ID] >= 0
-                && FIGHTER_MASTER_STATUS_KIND_APPEAL_HI_ATTACKER_ENTRY_ID[ENTRY_ID] < 8 {
-                    HitModule::set_whole(FIGHTERS[FIGHTER_MASTER_STATUS_KIND_APPEAL_HI_ATTACKER_ENTRY_ID[ENTRY_ID] as usize] as *mut smash::app::BattleObjectModuleAccessor,smash::app::HitStatus(*HIT_STATUS_NORMAL), 0);
+                ATTACKER_ENTRY_ID[ENTRY_ID] = array_id_i;
+                if ATTACKER_ENTRY_ID[ENTRY_ID] >= 0
+                && ATTACKER_ENTRY_ID[ENTRY_ID] < 8 {
+                    HitModule::set_whole(FIGHTERS[ATTACKER_ENTRY_ID[ENTRY_ID] as usize] as *mut smash::app::BattleObjectModuleAccessor,smash::app::HitStatus(*HIT_STATUS_NORMAL), 0);
                 }
                 let launch_speed = KineticModule::get_sum_speed_x(module_accessor,*KINETIC_ENERGY_RESERVE_ATTRIBUTE_DAMAGE);
                 let facing_dirn = PostureModule::lr(module_accessor);
@@ -276,9 +198,9 @@ pub fn once_per_fighter_frame(fighter: &mut L2CFighterCommon) {
                 else if launch_speed < 0.0 && facing_dirn < 0.0 {
                     PostureModule::reverse_lr(module_accessor);
                 }
-                else if FIGHTER_MASTER_STATUS_KIND_APPEAL_HI_ATTACKER_ENTRY_ID[ENTRY_ID] >= 0
-                && FIGHTER_MASTER_STATUS_KIND_APPEAL_HI_ATTACKER_ENTRY_ID[ENTRY_ID] < 8 {
-                    let pos_x_1 = PostureModule::pos_x(FIGHTERS[FIGHTER_MASTER_STATUS_KIND_APPEAL_HI_ATTACKER_ENTRY_ID[ENTRY_ID] as usize] as *mut smash::app::BattleObjectModuleAccessor);
+                else if ATTACKER_ENTRY_ID[ENTRY_ID] >= 0
+                && ATTACKER_ENTRY_ID[ENTRY_ID] < 8 {
+                    let pos_x_1 = PostureModule::pos_x(FIGHTERS[ATTACKER_ENTRY_ID[ENTRY_ID] as usize] as *mut smash::app::BattleObjectModuleAccessor);
                     let pos_x_2 = PostureModule::pos_x(module_accessor);
                     if pos_x_2 > pos_x_1 {
                         PostureModule::set_lr(module_accessor, -1.0);
@@ -287,162 +209,96 @@ pub fn once_per_fighter_frame(fighter: &mut L2CFighterCommon) {
                         PostureModule::set_lr(module_accessor, 1.0);
                     }
                 }
+                if ItemModule::is_attach_item(module_accessor,smash::app::ItemKind(*ITEM_KIND_RIPSTICKFLOWER)) {
+                    ItemModule::eject_attach(module_accessor,smash::app::ItemKind(*ITEM_KIND_RIPSTICKFLOWER),true,false);
+                }
+                else if ItemModule::is_attach_item(module_accessor,smash::app::ItemKind(*ITEM_KIND_WALKMUSHFLOWER)) {
+                    ItemModule::eject_attach(module_accessor,smash::app::ItemKind(*ITEM_KIND_WALKMUSHFLOWER),true,false);
+                }
                 KineticModule::change_kinetic(module_accessor,*FIGHTER_KINETIC_TYPE_RESET);
                 MotionModule::change_motion(module_accessor, smash::phx::Hash40::new("special_n"), 0.0, 0.0, false, 0.0, false, false);
                 StatusModule::change_status_request_from_script(module_accessor,*FIGHTER_MASTER_STATUS_KIND_SPECIAL_N_MAX_SHOOT,true);
-                FIGHTER_MASTER_STATUS_KIND_APPEAL_HI_HIT[ENTRY_ID] = false;
-                FIGHTER_MASTER_STATUS_KIND_APPEAL_HI_CHECK_HIT[ENTRY_ID] = false;
-                FIGHTER_MASTER_STATUS_KIND_APPEAL_HI_INVINCIBILITY[ENTRY_ID] = true;
-                FIGHTER_MASTER_STATUS_KIND_APPEAL_HI_FLOAT_SHIELD[ENTRY_ID] = 25.0;
-                FIGHTER_MASTER_STATUS_KIND_APPEAL_HI_MOTION_CHANGE[ENTRY_ID] = true;
-                acmd!(lua_state, {
-                    WHOLE_HIT(*HIT_STATUS_INVINCIBLE)
-                });
+                COUNTER_HIT[ENTRY_ID] = false;
+                CHECK_HIT[ENTRY_ID] = false;
+                COUNTER_INVINCIBILITY[ENTRY_ID] = true;
+                COUNTER_TIMER[ENTRY_ID] = 25.0;
+                MOTION_CHANGE[ENTRY_ID] = true;
+                ATTACKED[ATTACKER_ENTRY_ID[ENTRY_ID] as usize] = true;
                 WorkModule::set_float(module_accessor,0.0,*FIGHTER_INSTANCE_WORK_ID_FLOAT_SUCCEED_HIT_DAMAGE);
             }
-            if FIGHTER_MASTER_STATUS_KIND_APPEAL_HI_FLOAT_SHIELD[ENTRY_ID] < 25.0
-            && FIGHTER_MASTER_STATUS_KIND_APPEAL_HI_FLOAT_SHIELD[ENTRY_ID] > 0.0 {
-                FIGHTER_MASTER_STATUS_KIND_APPEAL_HI_CHECK_HIT[ENTRY_ID] = false;
-                DamageModule::set_damage_lock(module_accessor,false);
-                if FIGHTER_MASTER_STATUS_KIND_APPEAL_HI_INVINCIBILITY[ENTRY_ID] {
+            if COUNTER_TIMER[ENTRY_ID] < 25.0
+            && COUNTER_TIMER[ENTRY_ID] > 0.0 {
+                CHECK_HIT[ENTRY_ID] = false;
+                if COUNTER_INVINCIBILITY[ENTRY_ID] {
                     acmd!(lua_state, {
-                        WHOLE_HIT(*HIT_STATUS_INVINCIBLE)
+                        sv_module_access::damage(MA_MSC_DAMAGE_DAMAGE_NO_REACTION, DAMAGE_NO_REACTION_MODE_ALWAYS, 0)
+                        DamageModule::set_damage_mul(0.0001)
                     });
                 }
                 else if StopModule::is_damage(module_accessor) {
-                    FIGHTER_MASTER_STATUS_KIND_APPEAL_HI_FLOAT_SHIELD[ENTRY_ID] = -1.0;
-                    FIGHTER_MASTER_STATUS_KIND_APPEAL_HI_MOTION_CHANGE[ENTRY_ID] = true;
-                    ArticleModule::remove_exist(module_accessor,*FIGHTER_MASTER_GENERATE_ARTICLE_BOW,smash::app::ArticleOperationTarget(*ARTICLE_OPE_TARGET_ALL));
+                    COUNTER_TIMER[ENTRY_ID] = -1.0;
+                    MOTION_CHANGE[ENTRY_ID] = true;
+                    DamageModule::set_damage_mul(module_accessor,1.0);
                 }
             }
-            if FIGHTER_MASTER_STATUS_KIND_APPEAL_HI_FLOAT_SHIELD[ENTRY_ID] < 0.0 {
-                FIGHTER_MASTER_STATUS_KIND_APPEAL_HI_INVINCIBILITY[ENTRY_ID] = false;
-                FIGHTER_MASTER_STATUS_KIND_APPEAL_HI_WORK_FLOAT_ATTACK_POWER[ENTRY_ID] = 0.0;
+            if COUNTER_TIMER[ENTRY_ID] < 0.0 {
+                COUNTER_INVINCIBILITY[ENTRY_ID] = false;
+                COUNTER_POWER[ENTRY_ID] = 0.0;
                 acmd!(lua_state, {
-                    WHOLE_HIT(*HIT_STATUS_NORMAL)
+                    sv_module_access::damage(MA_MSC_DAMAGE_DAMAGE_NO_REACTION, DAMAGE_NO_REACTION_MODE_NORMAL, 0)
+                    DamageModule::set_damage_mul(1.0)
                 });
-                if ArticleModule::is_exist(module_accessor,*FIGHTER_MASTER_GENERATE_ARTICLE_ARROW2) {
-                    ArticleModule::remove_exist(module_accessor,*FIGHTER_MASTER_GENERATE_ARTICLE_ARROW2,smash::app::ArticleOperationTarget(*ARTICLE_OPE_TARGET_ALL));
-                }
-                WorkModule::enable_transition_term(module_accessor,*FIGHTER_STATUS_TRANSITION_TERM_ID_RUN);
-                WorkModule::enable_transition_term(module_accessor,*FIGHTER_STATUS_TRANSITION_TERM_ID_FINAL);
-                WorkModule::enable_transition_term(module_accessor,*FIGHTER_STATUS_TRANSITION_TERM_ID_WAIT);
-                WorkModule::enable_transition_term(module_accessor,*FIGHTER_STATUS_TRANSITION_TERM_ID_CONT_TURN);
-                WorkModule::enable_transition_term(module_accessor,*FIGHTER_STATUS_TRANSITION_TERM_ID_CONT_WALK);
-                WorkModule::enable_transition_term(module_accessor,*FIGHTER_STATUS_TRANSITION_TERM_ID_CONT_CATCH);
-                WorkModule::enable_transition_term(module_accessor,*FIGHTER_STATUS_TRANSITION_TERM_ID_CONT_ATTACK_S3);
-                WorkModule::enable_transition_term(module_accessor,*FIGHTER_STATUS_TRANSITION_TERM_ID_CONT_ATTACK_S4);
-                WorkModule::enable_transition_term(module_accessor,*FIGHTER_STATUS_TRANSITION_TERM_ID_CONT_ATTACK_100);
-                WorkModule::enable_transition_term(module_accessor,*FIGHTER_STATUS_TRANSITION_TERM_ID_CONT_ATTACK_AIR);
-                WorkModule::enable_transition_term(module_accessor,*FIGHTER_STATUS_TRANSITION_TERM_ID_CONT_ATTACK_HI3);
-                WorkModule::enable_transition_term(module_accessor,*FIGHTER_STATUS_TRANSITION_TERM_ID_CONT_ATTACK_HI4);
-                WorkModule::enable_transition_term(module_accessor,*FIGHTER_STATUS_TRANSITION_TERM_ID_CONT_ATTACK_LW3);
-                WorkModule::enable_transition_term(module_accessor,*FIGHTER_STATUS_TRANSITION_TERM_ID_CONT_ATTACK_LW4);
-                WorkModule::enable_transition_term(module_accessor,*FIGHTER_STATUS_TRANSITION_TERM_ID_CONT_JUMP_AERIAL);
-                WorkModule::enable_transition_term(module_accessor,*FIGHTER_STATUS_TRANSITION_TERM_ID_CONT_APPEAL_S);
-                WorkModule::enable_transition_term(module_accessor,*FIGHTER_STATUS_TRANSITION_TERM_ID_CONT_GUARD);
-                WorkModule::enable_transition_term(module_accessor,*FIGHTER_STATUS_TRANSITION_TERM_ID_CONT_GUARD_ON);
-                WorkModule::enable_transition_term(module_accessor,*FIGHTER_STATUS_TRANSITION_TERM_ID_CONT_APPEAL_LW);
-                WorkModule::enable_transition_term(module_accessor,*FIGHTER_STATUS_TRANSITION_TERM_ID_CONT_ESCAPE);
-                WorkModule::enable_transition_term(module_accessor,*FIGHTER_STATUS_TRANSITION_TERM_ID_CONT_ESCAPE_AIR);
-                WorkModule::enable_transition_term(module_accessor,*FIGHTER_STATUS_TRANSITION_TERM_ID_LANDING_ATTACK_AIR);
-                WorkModule::enable_transition_term(module_accessor,*FIGHTER_STATUS_TRANSITION_TERM_ID_CONT_ATTACK_S4_HOLD);
-                WorkModule::enable_transition_term(module_accessor,*FIGHTER_STATUS_TRANSITION_TERM_ID_CONT_ATTACK_HI4_HOLD);
-                WorkModule::enable_transition_term(module_accessor,*FIGHTER_STATUS_TRANSITION_TERM_ID_CONT_ATTACK_LW4_HOLD);
-                WorkModule::enable_transition_term(module_accessor,*FIGHTER_STATUS_TRANSITION_TERM_ID_CONT_ATTACK_S4_START);
-                WorkModule::enable_transition_term(module_accessor,*FIGHTER_STATUS_TRANSITION_TERM_ID_CONT_ATTACK_HI4_START);
-                WorkModule::enable_transition_term(module_accessor,*FIGHTER_STATUS_TRANSITION_TERM_ID_CONT_ATTACK_LW4_START);
-                WorkModule::enable_transition_term(module_accessor,*FIGHTER_STATUS_TRANSITION_TERM_ID_CONT_SPECIAL_N);
-                WorkModule::enable_transition_term(module_accessor,*FIGHTER_STATUS_TRANSITION_TERM_ID_CONT_SPECIAL_S);
-                WorkModule::enable_transition_term(module_accessor,*FIGHTER_STATUS_TRANSITION_TERM_ID_CONT_SPECIAL_LW);
-                WorkModule::enable_transition_term(module_accessor,*FIGHTER_STATUS_TRANSITION_TERM_ID_CONT_SPECIAL_HI);
             }
-            if FIGHTER_MASTER_STATUS_KIND_APPEAL_HI_FLOAT_SHIELD[ENTRY_ID] < 0.0
+            if COUNTER_TIMER[ENTRY_ID] < 0.0
             && ControlModule::check_button_off(module_accessor,*CONTROL_PAD_BUTTON_APPEAL_HI) {
-                if FIGHTER_MASTER_STATUS_KIND_APPEAL_HI_MOTION_CHANGE[ENTRY_ID] == false {
+                if MOTION_CHANGE[ENTRY_ID] == false {
                     ArticleModule::remove_exist(module_accessor,*FIGHTER_MASTER_GENERATE_ARTICLE_BOW,smash::app::ArticleOperationTarget(*ARTICLE_OPE_TARGET_ALL));
                 }
                 if StatusModule::status_kind(module_accessor) == *SITUATION_KIND_GROUND {
                     StatusModule::change_status_request_from_script(module_accessor,*FIGHTER_STATUS_KIND_WAIT,true);
                 }
-                FIGHTER_MASTER_STATUS_KIND_APPEAL_HI_FLAG_SHIELD[ENTRY_ID] = false;
-                FIGHTER_MASTER_STATUS_KIND_APPEAL_HI_FLOAT_SHIELD[ENTRY_ID] = 65.0;
-                FIGHTER_MASTER_STATUS_KIND_APPEAL_HI_WORK_FLOAT_ATTACK_POWER[ENTRY_ID] = 0.0;
-                FIGHTER_MASTER_STATUS_KIND_APPEAL_HI_MOTION_CHANGE[ENTRY_ID] = false;
-                acmd!(lua_state, {
-                    WHOLE_HIT(*HIT_STATUS_NORMAL)
-                });
-                WorkModule::enable_transition_term(module_accessor,*FIGHTER_STATUS_TRANSITION_TERM_ID_CONT_APPEAL_U);
+                COUNTER_START[ENTRY_ID] = false;
+                COUNTER_TIMER[ENTRY_ID] = 65.0;
+                COUNTER_POWER[ENTRY_ID] = 0.0;
+                MOTION_CHANGE[ENTRY_ID] = false;
             }
-            if FIGHTER_MASTER_STATUS_KIND_APPEAL_HI_FLAG_SHIELD[ENTRY_ID] {
-                FIGHTER_MASTER_STATUS_KIND_APPEAL_HI_FLOAT_SHIELD[ENTRY_ID] -= 1.0;
-                if FIGHTER_MASTER_STATUS_KIND_APPEAL_HI_FLOAT_SHIELD[ENTRY_ID] == 64.0 {
-                    FIGHTER_MASTER_STATUS_KIND_APPEAL_HI_SITUATION_PREVIOUS[ENTRY_ID] = StatusModule::situation_kind(module_accessor);
-                }
-                if StatusModule::situation_kind(module_accessor) != FIGHTER_MASTER_STATUS_KIND_APPEAL_HI_SITUATION_PREVIOUS[ENTRY_ID]
-                && FIGHTER_MASTER_STATUS_KIND_APPEAL_HI_MOTION_CHANGE[ENTRY_ID] == false {
-                    KineticModule::change_kinetic(module_accessor,*FIGHTER_KINETIC_TYPE_MOTION_IGNORE_NORMAL);
-                    GroundModule::correct(module_accessor,smash::app::GroundCorrectKind(*GROUND_CORRECT_KIND_GROUND_CLIFF_STOP));
-                    FIGHTER_MASTER_STATUS_KIND_APPEAL_HI_SITUATION_PREVIOUS[ENTRY_ID] = StatusModule::situation_kind(module_accessor);
-                }
-                if FIGHTER_MASTER_STATUS_KIND_APPEAL_HI_FLOAT_SHIELD[ENTRY_ID] > 0.0
-                && FIGHTER_MASTER_STATUS_KIND_APPEAL_HI_MOTION_CHANGE[ENTRY_ID] == false {
+            if COUNTER_START[ENTRY_ID] {
+                COUNTER_TIMER[ENTRY_ID] -= 1.0;
+                if COUNTER_TIMER[ENTRY_ID] > 0.0
+                && MOTION_CHANGE[ENTRY_ID] == false {
+                    KineticModule::clear_speed_energy_id(module_accessor,*FIGHTER_KINETIC_ENERGY_ID_CONTROL);
                     if PostureModule::lr(module_accessor) == -1.0 {
-                        MotionModule::change_motion_inherit_frame_keep_rate(module_accessor,smash::phx::Hash40::new("appeal_hi_l"),65.0 - FIGHTER_MASTER_STATUS_KIND_APPEAL_HI_FLOAT_SHIELD[ENTRY_ID],0.0,0.0);
+                        MotionModule::change_motion_inherit_frame_keep_rate(module_accessor,smash::phx::Hash40::new("appeal_hi_l"),65.0 - COUNTER_TIMER[ENTRY_ID],0.0,0.0);
                     }
                     else {
-                        MotionModule::change_motion_inherit_frame_keep_rate(module_accessor,smash::phx::Hash40::new("appeal_hi_r"),65.0 - FIGHTER_MASTER_STATUS_KIND_APPEAL_HI_FLOAT_SHIELD[ENTRY_ID],0.0,0.0);
+                        MotionModule::change_motion_inherit_frame_keep_rate(module_accessor,smash::phx::Hash40::new("appeal_hi_r"),65.0 - COUNTER_TIMER[ENTRY_ID],0.0,0.0);
                     }
-                    if ArticleModule::is_exist(module_accessor,*FIGHTER_MASTER_GENERATE_ARTICLE_ARROW1)
-                    || ArticleModule::is_exist(module_accessor,*FIGHTER_MASTER_GENERATE_ARTICLE_AXE)
-                    || ArticleModule::is_exist(module_accessor,*FIGHTER_MASTER_GENERATE_ARTICLE_SPEAR)
-                    || ArticleModule::is_exist(module_accessor,*FIGHTER_MASTER_GENERATE_ARTICLE_SWORD2) {
-                        ArticleModule::remove_exist(module_accessor,*FIGHTER_MASTER_GENERATE_ARTICLE_AXE,smash::app::ArticleOperationTarget(*ARTICLE_OPE_TARGET_ALL));
-                        ArticleModule::remove_exist(module_accessor,*FIGHTER_MASTER_GENERATE_ARTICLE_SPEAR,smash::app::ArticleOperationTarget(*ARTICLE_OPE_TARGET_ALL));
-                        ArticleModule::remove_exist(module_accessor,*FIGHTER_MASTER_GENERATE_ARTICLE_ARROW1,smash::app::ArticleOperationTarget(*ARTICLE_OPE_TARGET_ALL));
-                        ArticleModule::remove_exist(module_accessor,*FIGHTER_MASTER_GENERATE_ARTICLE_SWORD2,smash::app::ArticleOperationTarget(*ARTICLE_OPE_TARGET_ALL));
-                    }
-                    WorkModule::off_flag(module_accessor, *FIGHTER_STATUS_WORK_ID_FLAG_RESERVE_DIVE);
-                    WorkModule::unable_transition_term(module_accessor,*FIGHTER_STATUS_TRANSITION_TERM_ID_RUN);
-                    WorkModule::unable_transition_term(module_accessor,*FIGHTER_STATUS_TRANSITION_TERM_ID_FINAL);
-                    WorkModule::unable_transition_term(module_accessor,*FIGHTER_STATUS_TRANSITION_TERM_ID_WAIT);
-                    WorkModule::unable_transition_term(module_accessor,*FIGHTER_STATUS_TRANSITION_TERM_ID_CONT_TURN);
-                    WorkModule::unable_transition_term(module_accessor,*FIGHTER_STATUS_TRANSITION_TERM_ID_CONT_WALK);
-                    WorkModule::unable_transition_term(module_accessor,*FIGHTER_STATUS_TRANSITION_TERM_ID_CONT_CATCH);
-                    WorkModule::unable_transition_term(module_accessor,*FIGHTER_STATUS_TRANSITION_TERM_ID_CONT_ATTACK_S3);
-                    WorkModule::unable_transition_term(module_accessor,*FIGHTER_STATUS_TRANSITION_TERM_ID_CONT_ATTACK_S4);
-                    WorkModule::unable_transition_term(module_accessor,*FIGHTER_STATUS_TRANSITION_TERM_ID_CONT_ATTACK_100);
-                    WorkModule::unable_transition_term(module_accessor,*FIGHTER_STATUS_TRANSITION_TERM_ID_CONT_ATTACK_AIR);
-                    WorkModule::unable_transition_term(module_accessor,*FIGHTER_STATUS_TRANSITION_TERM_ID_CONT_ATTACK_HI3);
-                    WorkModule::unable_transition_term(module_accessor,*FIGHTER_STATUS_TRANSITION_TERM_ID_CONT_ATTACK_HI4);
-                    WorkModule::unable_transition_term(module_accessor,*FIGHTER_STATUS_TRANSITION_TERM_ID_CONT_ATTACK_LW3);
-                    WorkModule::unable_transition_term(module_accessor,*FIGHTER_STATUS_TRANSITION_TERM_ID_CONT_ATTACK_LW4);
-                    WorkModule::unable_transition_term(module_accessor,*FIGHTER_STATUS_TRANSITION_TERM_ID_CONT_JUMP_AERIAL);
-                    WorkModule::unable_transition_term(module_accessor,*FIGHTER_STATUS_TRANSITION_TERM_ID_CONT_APPEAL_S);
-                    WorkModule::unable_transition_term(module_accessor,*FIGHTER_STATUS_TRANSITION_TERM_ID_CONT_GUARD);
-                    WorkModule::unable_transition_term(module_accessor,*FIGHTER_STATUS_TRANSITION_TERM_ID_CONT_GUARD_ON);
-                    WorkModule::unable_transition_term(module_accessor,*FIGHTER_STATUS_TRANSITION_TERM_ID_CONT_APPEAL_LW);
-                    WorkModule::unable_transition_term(module_accessor,*FIGHTER_STATUS_TRANSITION_TERM_ID_CONT_ESCAPE);
-                    WorkModule::unable_transition_term(module_accessor,*FIGHTER_STATUS_TRANSITION_TERM_ID_CONT_ESCAPE_AIR);
-                    WorkModule::unable_transition_term(module_accessor,*FIGHTER_STATUS_TRANSITION_TERM_ID_LANDING_ATTACK_AIR);
-                    WorkModule::unable_transition_term(module_accessor,*FIGHTER_STATUS_TRANSITION_TERM_ID_CONT_ATTACK_S4_HOLD);
-                    WorkModule::unable_transition_term(module_accessor,*FIGHTER_STATUS_TRANSITION_TERM_ID_CONT_ATTACK_HI4_HOLD);
-                    WorkModule::unable_transition_term(module_accessor,*FIGHTER_STATUS_TRANSITION_TERM_ID_CONT_ATTACK_LW4_HOLD);
-                    WorkModule::unable_transition_term(module_accessor,*FIGHTER_STATUS_TRANSITION_TERM_ID_CONT_ATTACK_S4_START);
-                    WorkModule::unable_transition_term(module_accessor,*FIGHTER_STATUS_TRANSITION_TERM_ID_CONT_ATTACK_HI4_START);
-                    WorkModule::unable_transition_term(module_accessor,*FIGHTER_STATUS_TRANSITION_TERM_ID_CONT_ATTACK_LW4_START);
-                    WorkModule::unable_transition_term(module_accessor,*FIGHTER_STATUS_TRANSITION_TERM_ID_CONT_SPECIAL_N);
-                    WorkModule::unable_transition_term(module_accessor,*FIGHTER_STATUS_TRANSITION_TERM_ID_CONT_SPECIAL_S);
-                    WorkModule::unable_transition_term(module_accessor,*FIGHTER_STATUS_TRANSITION_TERM_ID_CONT_SPECIAL_LW);
-                    WorkModule::unable_transition_term(module_accessor,*FIGHTER_STATUS_TRANSITION_TERM_ID_CONT_SPECIAL_HI);
                 }
-                WorkModule::unable_transition_term(module_accessor,*FIGHTER_STATUS_TRANSITION_TERM_ID_CONT_APPEAL_U);
             }
         }
+    }
+}
+
+#[skyline::hook(replace=smash::app::lua_bind::WorkModule::is_enable_transition_term)]
+pub unsafe fn is_enable_transition_term_replace(module_accessor: &mut BattleObjectModuleAccessor, arg2: i32) -> bool {
+    let fighter_kind = smash::app::utility::get_kind(module_accessor);
+    let ret = original!()(module_accessor,arg2);
+    ENTRY_ID = WorkModule::get_int(module_accessor,*FIGHTER_INSTANCE_WORK_ID_INT_ENTRY_ID) as usize;
+    if fighter_kind == *FIGHTER_KIND_MASTER {
+        if COUNTER_START[ENTRY_ID] && COUNTER_HIT[ENTRY_ID] == false {
+            return false;
+        }
+        else {
+            return ret;
+        }
+    }
+    else {
+        return ret;
     }
 }
 
 pub fn install() {
     acmd::add_custom_hooks!(once_per_fighter_frame);
     acmd::add_hooks!(arrow);
+    skyline::install_hook!(is_enable_transition_term_replace);
 }
