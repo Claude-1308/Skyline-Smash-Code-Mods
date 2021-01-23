@@ -1184,6 +1184,9 @@ pub fn attack_hi4(fighter: &mut L2CFighterCommon) {
             wait(Frames=2)
             if(is_excute){
                 AttackModule::clear_all()
+            }
+            frame(Frame=122)
+            if(is_excute){
                 rust {
                     UP_SMASH_HOLD[entry_id(module_accessor)] = false;
                 }
@@ -3015,13 +3018,13 @@ pub fn special_n(fighter: &mut L2CFighterCommon) {
             frame(Frame=61)
             if(is_excute){
                 CancelModule::enable_cancel()
+                rust {
+                    SPECIAL_AIR_N[entry_id(module_accessor)] = false;
+                }
             }
             frame(Frame=80)
             if(is_excute){
                 StatusModule::change_status_request_from_script(FIGHTER_STATUS_KIND_WAIT,true)
-                rust {
-                    SPECIAL_AIR_N[entry_id(module_accessor)] = false;
-                }
             }
         }
         else {
@@ -3124,6 +3127,9 @@ pub fn special_air_n(fighter: &mut L2CFighterCommon) {
             frame(Frame=61)
             if(is_excute){
                 CancelModule::enable_cancel()
+                rust {
+                    SPECIAL_AIR_N[entry_id(module_accessor)] = false;
+                }
             }
             frame(Frame=80)
             if(is_excute){
@@ -3248,13 +3254,13 @@ pub fn special_n_lb(fighter: &mut L2CFighterCommon) {
             frame(Frame=61)
             if(is_excute){
                 CancelModule::enable_cancel()
+                rust {
+                    SPECIAL_AIR_N[entry_id(module_accessor)] = false;
+                }
             }
             frame(Frame=80)
             if(is_excute){
                 StatusModule::change_status_request_from_script(FIGHTER_STATUS_KIND_WAIT,true)
-                rust {
-                    SPECIAL_AIR_N[entry_id(module_accessor)] = false;
-                }
             }
         }
         else {
@@ -3357,6 +3363,9 @@ pub fn special_air_n_lb(fighter: &mut L2CFighterCommon) {
             frame(Frame=61)
             if(is_excute){
                 CancelModule::enable_cancel()
+                rust {
+                    SPECIAL_AIR_N[entry_id(module_accessor)] = false;
+                }
             }
             frame(Frame=80)
             if(is_excute){
@@ -4473,6 +4482,18 @@ pub unsafe fn is_enable_transition_term_replace(module_accessor: &mut BattleObje
     let fighter_kind = smash::app::utility::get_kind(module_accessor);
     let ret = original!()(module_accessor,term);
     if fighter_kind == *FIGHTER_KIND_CLOUD {
+        if UP_SMASH_HOLD[entry_id(module_accessor)] {
+            if term != *FIGHTER_STATUS_TRANSITION_TERM_ID_FALL && term != *FIGHTER_STATUS_TRANSITION_TERM_ID_SLIP
+            && term != *FIGHTER_STATUS_TRANSITION_TERM_ID_CAPTURE_CUT && term != *FIGHTER_STATUS_TRANSITION_TERM_ID_CLIFF_CATCH
+            && term != *FIGHTER_STATUS_TRANSITION_TERM_ID_DAMAGE_FALL && term != *FIGHTER_STATUS_TRANSITION_TERM_ID_CAPTURE_WAIT
+            && term != *FIGHTER_STATUS_TRANSITION_TERM_ID_DAMAGE_FLY_REFLECT_L && term != *FIGHTER_STATUS_TRANSITION_TERM_ID_DAMAGE_FLY_REFLECT_R
+            && term != *FIGHTER_STATUS_TRANSITION_TERM_ID_DAMAGE_FLY_REFLECT_U && term != *FIGHTER_STATUS_TRANSITION_TERM_ID_DAMAGE_FLY_REFLECT_D {
+                return false;
+            }
+            else {
+                return ret;
+            }
+        }
         if SPECIAL_LW_COUNTER[entry_id(module_accessor)] {
             if SPECIAL_LW_COUNTER_CHECK[entry_id(module_accessor)] {
                 if term != *FIGHTER_STATUS_TRANSITION_TERM_ID_FALL && term != *FIGHTER_STATUS_TRANSITION_TERM_ID_SLIP
