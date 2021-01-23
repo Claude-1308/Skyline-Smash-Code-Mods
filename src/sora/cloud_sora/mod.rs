@@ -9,6 +9,7 @@ use skyline::nn::ro::LookupSymbol;
 use smash::app::BattleObjectModuleAccessor;
 mod replacement_files;
 use replacement_files::ARC_FILES;
+use skyline::hooks::{getRegionAddress, Region};
 
 static mut FIRE : [bool; 8] = [false; 8];
 static mut ICE : [bool; 8] = [false; 8];
@@ -24,16 +25,19 @@ static mut SPECIAL_LW_HIT : [bool; 8] = [false; 8];
 static mut SPECIAL_LW_COUNTER_TIME : [f32; 8] = [0.0; 8];
 static mut SPECIAL_LW_HIT_TIME : [f32; 8] = [0.0; 8];
 static mut SPECIAL_HI : [bool; 8] = [false; 8];
+static mut SPECIAL_AIR_N : [bool; 8] = [false; 8];
+static mut CHECK : [bool; 8] = [false; 8];
+static mut FRAME : [f32; 8] = [0.0; 8];
 static mut DOWN_SMASH : [bool; 8] = [false; 8];
 static mut DOWN_SMASH_HOLD : [bool; 8] = [false; 8];
-static mut DOWN_SMASH_COOL_DOWN : [i32; 8] = [0; 8];
 static mut UP_SMASH : [bool; 8] = [false; 8];
 static mut UP_SMASH_HOLD : [bool; 8] = [false; 8];
-static mut UP_SMASH_COOL_DOWN : [i32; 8] = [0; 8];
 static mut SIDE_SMASH : [bool; 8] = [false; 8];
-static mut SIDE_SMASH_COOL_DOWN : [i32; 8] = [0; 8];
 static mut SIDE_SMASH_HOLD : [bool; 8] = [false; 8];
 static mut VICTORY_COLOR_INDEX: u32 = 0;
+static mut MUSIC_OFFSET : usize = 0x35ae700; //10.1.0
+static mut INT_OFFSET : usize = 0x4ded80;
+static mut FLOAT_OFFSET : usize = 0x4dedc0;
 
 pub unsafe fn entry_id(module_accessor: &mut BattleObjectModuleAccessor) -> usize {
     let entry_id = WorkModule::get_int(module_accessor, *FIGHTER_INSTANCE_WORK_ID_INT_ENTRY_ID) as usize;
@@ -215,6 +219,12 @@ pub fn effect_13(fighter: &mut L2CFighterCommon) {
             }
         }
         else {
+            if(WorkModule::is_flag(module_accessor,*FIGHTER_CLOUD_INSTANCE_WORK_ID_FLAG_LIMIT_BREAK)) {
+                MotionModule::set_rate(1.25)
+            }
+            else {
+                MotionModule::set_rate(1.1)
+            }
             if(is_excute){
                 MotionModule::set_frame(61.0,false)
             }
@@ -304,6 +314,12 @@ pub fn attack_13(fighter: &mut L2CFighterCommon) {
         else {
             if(is_excute){
                 MotionModule::set_frame(61.0,false)
+                if(WorkModule::is_flag(module_accessor,*FIGHTER_CLOUD_INSTANCE_WORK_ID_FLAG_LIMIT_BREAK)) {
+                    MotionModule::set_rate(1.25)
+                }
+                else {
+                    MotionModule::set_rate(1.1)
+                }
             }
             frame(Frame=66)
             if(is_excute){
@@ -581,12 +597,7 @@ pub fn attack_s3(fighter: &mut L2CFighterCommon) {
             frame(Frame=83)
             FT_MOTION_RATE(FSM=0.8)
             frame(Frame=84)
-            if(WorkModule::is_flag(module_accessor,*FIGHTER_CLOUD_INSTANCE_WORK_ID_FLAG_LIMIT_BREAK)) {
-                MotionModule::set_rate(1.25)
-            }
-            else {
-                MotionModule::set_rate(1.0)
-            }
+            FT_MOTION_RATE(FSM=1)
             if(is_excute){
                 ATTACK(ID=0, Part=0, Bone=hash40("top"), Damage=10.0, Angle=361, KBG=100, FKB=0, BKB=25, Size=4.0, X=0.0, Y=10.0, Z=10.0, X2=0.0, Y2=8.0, Z2=25.0, Hitlag=1.4, SDI=1.0, Clang_Rebound=ATTACK_SETOFF_KIND_ON, FacingRestrict=ATTACK_LR_CHECK_F, SetWeight=false, ShieldDamage=1, Trip=0.0, Rehit=0, Reflectable=false, Absorbable=false, Flinchless=false, DisableHitlag=false, Direct_Hitbox=true, Ground_or_Air=COLLISION_SITUATION_MASK_GA, Hitbits=COLLISION_CATEGORY_MASK_ALL, CollisionPart=COLLISION_PART_MASK_ALL, FriendlyFire=false, Effect=hash40("collision_attr_cutup"), SFXLevel=ATTACK_SOUND_LEVEL_M, SFXType=COLLISION_SOUND_ATTR_CUTUP, Type=ATTACK_REGION_SWORD)
             }
@@ -803,7 +814,12 @@ pub fn effect_s4(fighter: &mut L2CFighterCommon) {
                 EFFECT_FOLLOW_WORK(WorkModule::get_int64(module_accessor,*FIGHTER_CLOUD_INSTANCE_WORK_ID_INT_EFFECT_KIND_SWORD_FLARE),hash40("haver"),0,0,0,0,0,0,1,true)
                 LAST_EFFECT_SET_COLOR(3.0, 1.5, 0.0)
                 AFTER_IMAGE4_ON_arg29(84654574715 as u64, 82355625409 as u64, 12, hash40("haver"), 0, 2.5, 0, hash40("haver"), 0, 21.0, 0, true, LUA_VOID, hash40("haver"), 0, 0, 0, 0, 0, 0, 1, 0, EFFECT_AXIS_X, 0, TRAIL_BLEND_ALPHA, 101, TRAIL_CULL_NONE, 1.29999995, 0.100000001)
-                EFFECT(73574333809 as u64,hash40("top"),0,0,0,0,0,0,1,true)
+                EFFECT(73574333809 as u64,hash40("top"),0,0,2,0,0,0,1,true)
+                LAST_EFFECT_SET_COLOR(3.0, 1.5, 0.0)
+            }
+            frame(Frame=102)
+            if(is_excute){
+                EFFECT(73574333809 as u64,hash40("top"),0,0,3,0,0,0,1,true)
                 LAST_EFFECT_SET_COLOR(3.0, 1.5, 0.0)
             }
             frame(Frame=108)
@@ -971,7 +987,7 @@ pub fn attack_s4(fighter: &mut L2CFighterCommon) {
             }
             frame(Frame=99)
             if(is_excute){
-                ATTACK(ID=0, Part=0, Bone=hash40("top"), Damage=2.0, Angle=361, KBG=70, FKB=10, BKB=10, Size=5.0, X=0.0, Y=8.5, Z=14.5, X2=0.0, Y2=8.5, Z2=15.5, Hitlag=1.4, SDI=1.0, Clang_Rebound=ATTACK_SETOFF_KIND_ON, FacingRestrict=ATTACK_LR_CHECK_F, SetWeight=false, ShieldDamage=0, Trip=0.0, Rehit=0, Reflectable=false, Absorbable=false, Flinchless=false, DisableHitlag=false, Direct_Hitbox=true, Ground_or_Air=COLLISION_SITUATION_MASK_GA, Hitbits=COLLISION_CATEGORY_MASK_ALL, CollisionPart=COLLISION_PART_MASK_ALL, FriendlyFire=false, Effect=hash40("collision_attr_cutup"), SFXLevel=ATTACK_SOUND_LEVEL_M, SFXType=COLLISION_SOUND_ATTR_CLOUD_SMASH_02, Type=ATTACK_REGION_SWORD)
+                ATTACK(ID=0, Part=0, Bone=hash40("top"), Damage=2.0, Angle=361, KBG=70, FKB=10, BKB=10, Size=5.0, X=0.0, Y=8.5, Z=15.0, X2=0.0, Y2=8.5, Z2=16.0, Hitlag=1.4, SDI=1.0, Clang_Rebound=ATTACK_SETOFF_KIND_ON, FacingRestrict=ATTACK_LR_CHECK_F, SetWeight=false, ShieldDamage=0, Trip=0.0, Rehit=0, Reflectable=false, Absorbable=false, Flinchless=false, DisableHitlag=false, Direct_Hitbox=true, Ground_or_Air=COLLISION_SITUATION_MASK_GA, Hitbits=COLLISION_CATEGORY_MASK_ALL, CollisionPart=COLLISION_PART_MASK_ALL, FriendlyFire=false, Effect=hash40("collision_attr_cutup"), SFXLevel=ATTACK_SOUND_LEVEL_M, SFXType=COLLISION_SOUND_ATTR_CLOUD_SMASH_02, Type=ATTACK_REGION_SWORD)
                 ATTACK(ID=1, Part=0, Bone=hash40("top"), Damage=2.0, Angle=361, KBG=70, FKB=10, BKB=0, Size=5.0, X=0.0, Y=8.5, Z=7.0, X2=0.0, Y2=8.5, Z2=8.0, Hitlag=1.4, SDI=1.0, Clang_Rebound=ATTACK_SETOFF_KIND_ON, FacingRestrict=ATTACK_LR_CHECK_F, SetWeight=false, ShieldDamage=0, Trip=0.0, Rehit=0, Reflectable=false, Absorbable=false, Flinchless=false, DisableHitlag=false, Direct_Hitbox=true, Ground_or_Air=COLLISION_SITUATION_MASK_GA, Hitbits=COLLISION_CATEGORY_MASK_ALL, CollisionPart=COLLISION_PART_MASK_ALL, FriendlyFire=false, Effect=hash40("collision_attr_cutup"), SFXLevel=ATTACK_SOUND_LEVEL_M, SFXType=COLLISION_SOUND_ATTR_CLOUD_SMASH_02, Type=ATTACK_REGION_SWORD)
                 AttackModule::set_attack_height_all(smash::app::AttackHeight(*ATTACK_HEIGHT_HIGH), false)
                 AttackModule::set_add_reaction_frame(0,3.0,false)
@@ -982,14 +998,16 @@ pub fn attack_s4(fighter: &mut L2CFighterCommon) {
             }
             frame(Frame=105)
             if(is_excute){
-                ATTACK(ID=0, Part=0, Bone=hash40("top"), Damage=15.0, Angle=40, KBG=85, FKB=0, BKB=40, Size=7.0, X=0.0, Y=8.5, Z=16.0, X2=0.0, Y2=8.5, Z2=17.0, Hitlag=2.0, SDI=1.0, Clang_Rebound=ATTACK_SETOFF_KIND_ON, FacingRestrict=ATTACK_LR_CHECK_F, SetWeight=false, ShieldDamage=0, Trip=0.0, Rehit=0, Reflectable=false, Absorbable=false, Flinchless=false, DisableHitlag=false, Direct_Hitbox=true, Ground_or_Air=COLLISION_SITUATION_MASK_GA, Hitbits=COLLISION_CATEGORY_MASK_ALL, CollisionPart=COLLISION_PART_MASK_ALL, FriendlyFire=false, Effect=hash40("collision_attr_cutup"), SFXLevel=ATTACK_SOUND_LEVEL_L, SFXType=COLLISION_SOUND_ATTR_CLOUD_SMASH_03, Type=ATTACK_REGION_SWORD)
+                ATTACK(ID=0, Part=0, Bone=hash40("top"), Damage=15.0, Angle=40, KBG=85, FKB=0, BKB=40, Size=7.0, X=0.0, Y=8.5, Z=17.0, X2=0.0, Y2=8.5, Z2=18.0, Hitlag=2.0, SDI=1.0, Clang_Rebound=ATTACK_SETOFF_KIND_ON, FacingRestrict=ATTACK_LR_CHECK_F, SetWeight=false, ShieldDamage=0, Trip=0.0, Rehit=0, Reflectable=false, Absorbable=false, Flinchless=false, DisableHitlag=false, Direct_Hitbox=true, Ground_or_Air=COLLISION_SITUATION_MASK_GA, Hitbits=COLLISION_CATEGORY_MASK_ALL, CollisionPart=COLLISION_PART_MASK_ALL, FriendlyFire=false, Effect=hash40("collision_attr_cutup"), SFXLevel=ATTACK_SOUND_LEVEL_L, SFXType=COLLISION_SOUND_ATTR_CLOUD_SMASH_03, Type=ATTACK_REGION_SWORD)
                 ATTACK(ID=1, Part=0, Bone=hash40("top"), Damage=15.0, Angle=40, KBG=85, FKB=0, BKB=40, Size=7.0, X=0.0, Y=8.5, Z=8.0, X2=0.0, Y2=8.5, Z2=9.0, Hitlag=2.0, SDI=1.0, Clang_Rebound=ATTACK_SETOFF_KIND_ON, FacingRestrict=ATTACK_LR_CHECK_F, SetWeight=false, ShieldDamage=0, Trip=0.0, Rehit=0, Reflectable=false, Absorbable=false, Flinchless=false, DisableHitlag=false, Direct_Hitbox=true, Ground_or_Air=COLLISION_SITUATION_MASK_GA, Hitbits=COLLISION_CATEGORY_MASK_ALL, CollisionPart=COLLISION_PART_MASK_ALL, FriendlyFire=false, Effect=hash40("collision_attr_cutup"), SFXLevel=ATTACK_SOUND_LEVEL_L, SFXType=COLLISION_SOUND_ATTR_CLOUD_SMASH_03, Type=ATTACK_REGION_SWORD)
                 AttackModule::set_attack_height_all(smash::app::AttackHeight(*ATTACK_HEIGHT_HIGH), false)
             }
             frame(Frame=108)
             if(is_excute){
                 AttackModule::clear_all()
-                StatusModule::change_status_request_from_script(FIGHTER_STATUS_KIND_WAIT,true)
+                rust {
+                    SIDE_SMASH_HOLD[entry_id(module_accessor)] = false;
+                }
             }
         }
     });
@@ -1027,6 +1045,12 @@ pub fn effect_hi4(fighter: &mut L2CFighterCommon) {
             }
         }
         else {
+            if(WorkModule::is_flag(module_accessor,*FIGHTER_CLOUD_INSTANCE_WORK_ID_FLAG_LIMIT_BREAK)) {
+                MotionModule::set_rate(1.25)
+            }
+            else {
+                MotionModule::set_rate(1.1)
+            }
             if(is_excute){
                 EFFECT(hash40("sys_smash_flash"),hash40("haver"),0,11,0,0,0,0,1,0,0,0,0,0,0,true)
             }
@@ -1160,7 +1184,9 @@ pub fn attack_hi4(fighter: &mut L2CFighterCommon) {
             wait(Frames=2)
             if(is_excute){
                 AttackModule::clear_all()
-                StatusModule::change_status_request_from_script(FIGHTER_STATUS_KIND_WAIT,true)
+                rust {
+                    UP_SMASH_HOLD[entry_id(module_accessor)] = false;
+                }
             }
         }
         else {
@@ -1401,7 +1427,9 @@ pub fn attack_lw4(fighter: &mut L2CFighterCommon) {
             wait(Frames=7)
             if(is_excute){
                 AttackModule::clear_all()
-                StatusModule::change_status_request_from_script(FIGHTER_STATUS_KIND_WAIT,true)
+                rust {
+                    DOWN_SMASH_HOLD[entry_id(module_accessor)] = false;
+                }
             }
         }
     });
@@ -1431,6 +1459,12 @@ pub fn effect_air_n(fighter: &mut L2CFighterCommon) {
             }
         }
         else {
+            if(WorkModule::is_flag(module_accessor,*FIGHTER_CLOUD_INSTANCE_WORK_ID_FLAG_LIMIT_BREAK)) {
+                MotionModule::set_rate(1.1)
+            }
+            else {
+                MotionModule::set_rate(0.8)
+            }
             if(is_excute){
                 MotionModule::set_frame(56.0,false)
             }
@@ -1609,6 +1643,12 @@ pub fn effect_air_f(fighter: &mut L2CFighterCommon) {
             }
         }
         else {
+            if(WorkModule::is_flag(module_accessor,*FIGHTER_CLOUD_INSTANCE_WORK_ID_FLAG_LIMIT_BREAK)) {
+                MotionModule::set_rate(1.25)
+            }
+            else {
+                MotionModule::set_rate(1.1)
+            }
             if(is_excute){
                 MotionModule::set_frame(80.0,false)
             }
@@ -2952,22 +2992,24 @@ pub fn effect_special_n(fighter: &mut L2CFighterCommon) {
 pub fn special_n(fighter: &mut L2CFighterCommon) {
     acmd!({
         if(cloud_id(module_accessor)) {
-            frame(Frame=10)
-            if(is_excute){
-                WorkModule::on_flag(Flag=FIGHTER_CLOUD_STATUS_WORK_ID_SPECIAL_N_FLAG_SPECIAL_FALL)
-            }
-            frame(Frame=16)
-            if(is_excute){
-                ATTACK(ID=0, Part=0, Bone=hash40("top"), Damage=0.0, Angle=361, KBG=100, FKB=40, BKB=0, Size=3.0, X=0.0, Y=6.5, Z=5.5, X2=0.0, Y2=6.5, Z2=4.5, Hitlag=0.0, SDI=0.0, Clang_Rebound=ATTACK_SETOFF_KIND_OFF, FacingRestrict=ATTACK_LR_CHECK_F, SetWeight=false, ShieldDamage=0, Trip=0.0, Rehit=0, Reflectable=false, Absorbable=false, Flinchless=true, DisableHitlag=true, Direct_Hitbox=false, Ground_or_Air=COLLISION_SITUATION_MASK_G, Hitbits=COLLISION_CATEGORY_MASK_FIGHTER, CollisionPart=COLLISION_PART_MASK_ALL, FriendlyFire=false, Effect=hash40("collision_attr_normal"), SFXLevel=ATTACK_SOUND_LEVEL_S, SFXType=COLLISION_SOUND_ATTR_NONE, Type=ATTACK_REGION_NONE)
-            }
-            wait(Frames=2)
-            if(is_excute){
-                AttackModule::clear_all()
-                ArticleModule::generate_article(FIGHTER_CLOUD_GENERATE_ARTICLE_WAVE,false,0)
-            }
-            frame(Frame=22)
-            if(is_excute){
-                WorkModule::off_flag(Flag=FIGHTER_CLOUD_STATUS_WORK_ID_SPECIAL_N_FLAG_SPECIAL_FALL)
+            if(SPECIAL_AIR_N[entry_id(module_accessor)] == false) {
+                frame(Frame=10)
+                if(is_excute){
+                    WorkModule::on_flag(Flag=FIGHTER_CLOUD_STATUS_WORK_ID_SPECIAL_N_FLAG_SPECIAL_FALL)
+                }
+                frame(Frame=16)
+                if(is_excute){
+                    ATTACK(ID=0, Part=0, Bone=hash40("top"), Damage=0.0, Angle=361, KBG=100, FKB=40, BKB=0, Size=3.0, X=0.0, Y=6.5, Z=5.5, X2=0.0, Y2=6.5, Z2=4.5, Hitlag=0.0, SDI=0.0, Clang_Rebound=ATTACK_SETOFF_KIND_OFF, FacingRestrict=ATTACK_LR_CHECK_F, SetWeight=false, ShieldDamage=0, Trip=0.0, Rehit=0, Reflectable=false, Absorbable=false, Flinchless=true, DisableHitlag=true, Direct_Hitbox=false, Ground_or_Air=COLLISION_SITUATION_MASK_G, Hitbits=COLLISION_CATEGORY_MASK_FIGHTER, CollisionPart=COLLISION_PART_MASK_ALL, FriendlyFire=false, Effect=hash40("collision_attr_normal"), SFXLevel=ATTACK_SOUND_LEVEL_S, SFXType=COLLISION_SOUND_ATTR_NONE, Type=ATTACK_REGION_NONE)
+                }
+                wait(Frames=2)
+                if(is_excute){
+                    AttackModule::clear_all()
+                    ArticleModule::generate_article(FIGHTER_CLOUD_GENERATE_ARTICLE_WAVE,false,0)
+                }
+                frame(Frame=22)
+                if(is_excute){
+                    WorkModule::off_flag(Flag=FIGHTER_CLOUD_STATUS_WORK_ID_SPECIAL_N_FLAG_SPECIAL_FALL)
+                }
             }
             FT_MOTION_RATE(FSM=0.8)
             frame(Frame=61)
@@ -2977,6 +3019,9 @@ pub fn special_n(fighter: &mut L2CFighterCommon) {
             frame(Frame=80)
             if(is_excute){
                 StatusModule::change_status_request_from_script(FIGHTER_STATUS_KIND_WAIT,true)
+                rust {
+                    SPECIAL_AIR_N[entry_id(module_accessor)] = false;
+                }
             }
         }
         else {
@@ -3059,14 +3104,6 @@ pub fn effect_special_air_n(fighter: &mut L2CFighterCommon) {
 pub fn special_air_n(fighter: &mut L2CFighterCommon) {
     acmd!({
         if(cloud_id(module_accessor)) {
-            rust {
-                let mut y_mul = -0.1;
-                if StopModule::is_damage(module_accessor) {
-                    y_mul = 1.0;
-                }
-                let fall  = smash::phx::Vector3f { x: 1.0, y: y_mul, z: 1.0 };
-                KineticModule::mul_speed(module_accessor, &fall, *FIGHTER_KINETIC_ENERGY_ID_GRAVITY);
-            }
             frame(Frame=10)
             if(is_excute){
                 WorkModule::on_flag(Flag=FIGHTER_CLOUD_STATUS_WORK_ID_SPECIAL_N_FLAG_SPECIAL_FALL)
@@ -3100,11 +3137,7 @@ pub fn special_air_n(fighter: &mut L2CFighterCommon) {
                 MotionModule::set_frame(83.0,false)
             }
             rust {
-                let mut y_mul = -0.1;
-                if StopModule::is_damage(module_accessor) {
-                    y_mul = 1.0;
-                }
-                let fall  = smash::phx::Vector3f { x: 1.0, y: y_mul, z: 1.0 };
+                let fall  = smash::phx::Vector3f { x: 1.0, y: 0.6, z: 1.0 };
                 KineticModule::mul_speed(module_accessor, &fall, *FIGHTER_KINETIC_ENERGY_ID_GRAVITY);
             }
             frame(Frame=106)
@@ -3194,21 +3227,23 @@ pub fn effect_special_n_lb(fighter: &mut L2CFighterCommon) {
 pub fn special_n_lb(fighter: &mut L2CFighterCommon) {
     acmd!({
         if(cloud_id(module_accessor)) {
-            frame(Frame=10)
-            if(is_excute){
-                WorkModule::on_flag(Flag=FIGHTER_CLOUD_STATUS_WORK_ID_SPECIAL_N_FLAG_SPECIAL_FALL)
-            }
-            frame(Frame=16)
-            if(is_excute){
-                ArticleModule::generate_article(FIGHTER_CLOUD_GENERATE_ARTICLE_WAVE,false,0)
-            }
-            frame(Frame=18)
-            if(is_excute){
-                sv_battle_object::notify_event_msc_cmd(0x25813802b6u64)
-            }
-            frame(Frame=22)
-            if(is_excute){
-                WorkModule::off_flag(Flag=FIGHTER_CLOUD_STATUS_WORK_ID_SPECIAL_N_FLAG_SPECIAL_FALL)
+            if(SPECIAL_AIR_N[entry_id(module_accessor)] == false) {
+                frame(Frame=10)
+                if(is_excute){
+                    WorkModule::on_flag(Flag=FIGHTER_CLOUD_STATUS_WORK_ID_SPECIAL_N_FLAG_SPECIAL_FALL)
+                }
+                frame(Frame=16)
+                if(is_excute){
+                    ArticleModule::generate_article(FIGHTER_CLOUD_GENERATE_ARTICLE_WAVE,false,0)
+                }
+                frame(Frame=18)
+                if(is_excute){
+                    sv_battle_object::notify_event_msc_cmd(0x25813802b6u64)
+                }
+                frame(Frame=22)
+                if(is_excute){
+                    WorkModule::off_flag(Flag=FIGHTER_CLOUD_STATUS_WORK_ID_SPECIAL_N_FLAG_SPECIAL_FALL)
+                }
             }
             frame(Frame=61)
             if(is_excute){
@@ -3217,6 +3252,9 @@ pub fn special_n_lb(fighter: &mut L2CFighterCommon) {
             frame(Frame=80)
             if(is_excute){
                 StatusModule::change_status_request_from_script(FIGHTER_STATUS_KIND_WAIT,true)
+                rust {
+                    SPECIAL_AIR_N[entry_id(module_accessor)] = false;
+                }
             }
         }
         else {
@@ -3300,14 +3338,6 @@ pub fn effect_special_air_n_lb(fighter: &mut L2CFighterCommon) {
 pub fn special_air_n_lb(fighter: &mut L2CFighterCommon) {
     acmd!({
         if(cloud_id(module_accessor)) {
-            rust {
-                let mut y_mul = -0.1;
-                if StopModule::is_damage(module_accessor) {
-                    y_mul = 1.0;
-                }
-                let fall  = smash::phx::Vector3f { x: 1.0, y: y_mul, z: 1.0 };
-                KineticModule::mul_speed(module_accessor, &fall, *FIGHTER_KINETIC_ENERGY_ID_GRAVITY);
-            }
             frame(Frame=10)
             if(is_excute){
                 WorkModule::on_flag(Flag=FIGHTER_CLOUD_STATUS_WORK_ID_SPECIAL_N_FLAG_SPECIAL_FALL)
@@ -3340,11 +3370,7 @@ pub fn special_air_n_lb(fighter: &mut L2CFighterCommon) {
                 MotionModule::set_frame(83.0,false)
             }
             rust {
-                let mut y_mul = -0.1;
-                if StopModule::is_damage(module_accessor) {
-                    y_mul = 1.0;
-                }
-                let fall  = smash::phx::Vector3f { x: 1.0, y: y_mul, z: 1.0 };
+                let fall  = smash::phx::Vector3f { x: 1.0, y: 0.6, z: 1.0 };
                 KineticModule::mul_speed(module_accessor, &fall, *FIGHTER_KINETIC_ENERGY_ID_GRAVITY);
             }
             frame(Frame=106)
@@ -4202,18 +4228,22 @@ pub fn cloud_break(fighter: &mut L2CFighterCommon) {
                         UP_SMASH[entry_id(module_accessor)] = true;
                     }
                 }
-                if UP_SMASH[entry_id(module_accessor)] {
-                    UP_SMASH_COOL_DOWN[entry_id(module_accessor)] += 1;
-                    if UP_SMASH_COOL_DOWN[entry_id(module_accessor)] == 60 {
-                        UP_SMASH_COOL_DOWN[entry_id(module_accessor)] = 0;
-                        UP_SMASH[entry_id(module_accessor)] = false;
-                        UP_SMASH_HOLD[entry_id(module_accessor)] = false;
-                    }
+                if MotionModule::is_end(module_accessor) {
+                    UP_SMASH[entry_id(module_accessor)] = false;
                 }
                 if StopModule::is_damage(module_accessor) {
-                    UP_SMASH_COOL_DOWN[entry_id(module_accessor)] = 0;
                     UP_SMASH[entry_id(module_accessor)] = false;
                     UP_SMASH_HOLD[entry_id(module_accessor)] = false;
+                }
+                if MotionModule::motion_kind(module_accessor) == smash::hash40("special_air_n") || MotionModule::motion_kind(module_accessor) == smash::hash40("special_n") {
+                    if MotionModule::motion_kind(module_accessor) == smash::hash40("special_air_n") && MotionModule::frame(module_accessor) >= 18.0 {
+                        SPECIAL_AIR_N[entry_id(module_accessor)] = true;
+                    }
+                }
+                if MotionModule::motion_kind(module_accessor) == smash::hash40("special_air_n_lb") || MotionModule::motion_kind(module_accessor) == smash::hash40("special_n_lb") {
+                    if MotionModule::motion_kind(module_accessor) == smash::hash40("special_air_n_lb") && MotionModule::frame(module_accessor) >= 16.0 {
+                        SPECIAL_AIR_N[entry_id(module_accessor)] = true;
+                    }
                 }
             }
         }
@@ -4307,46 +4337,8 @@ pub fn moves_lag(fighter: &mut L2CFighterCommon) {
         let fighter_kind = smash::app::utility::get_kind(module_accessor);
         if fighter_kind == *FIGHTER_KIND_CLOUD {
             if cloud_id(module_accessor) == false {
-                if WorkModule::is_flag(module_accessor,*FIGHTER_CLOUD_INSTANCE_WORK_ID_FLAG_LIMIT_BREAK) {
-                    if DOWN_SMASH[entry_id(module_accessor)] {
-                        DOWN_SMASH_COOL_DOWN[entry_id(module_accessor)] += 1;
-                        if DOWN_SMASH_COOL_DOWN[entry_id(module_accessor)] == 80 {
-                            DOWN_SMASH_COOL_DOWN[entry_id(module_accessor)] = 0;
-                            DOWN_SMASH[entry_id(module_accessor)] = false;
-                            DOWN_SMASH_HOLD[entry_id(module_accessor)] = false;
-                        }
-                    }
-                    if SIDE_SMASH[entry_id(module_accessor)] {
-                        SIDE_SMASH_COOL_DOWN[entry_id(module_accessor)] += 1;
-                        if SIDE_SMASH_COOL_DOWN[entry_id(module_accessor)] == 69 {
-                            SIDE_SMASH_COOL_DOWN[entry_id(module_accessor)] = 0;
-                            SIDE_SMASH[entry_id(module_accessor)] = false;
-                            SIDE_SMASH_HOLD[entry_id(module_accessor)] = false;
-                        }
-                    }
-                }
-                else {
-                    if DOWN_SMASH[entry_id(module_accessor)] {
-                        DOWN_SMASH_COOL_DOWN[entry_id(module_accessor)] += 1;
-                        if DOWN_SMASH_COOL_DOWN[entry_id(module_accessor)] == 85 {
-                            DOWN_SMASH_COOL_DOWN[entry_id(module_accessor)] = 0;
-                            DOWN_SMASH[entry_id(module_accessor)] = false;
-                            DOWN_SMASH_HOLD[entry_id(module_accessor)] = false;
-                        }
-                    }
-                    if SIDE_SMASH[entry_id(module_accessor)] {
-                        SIDE_SMASH_COOL_DOWN[entry_id(module_accessor)] += 1;
-                        if SIDE_SMASH_COOL_DOWN[entry_id(module_accessor)] == 74 {
-                            SIDE_SMASH_COOL_DOWN[entry_id(module_accessor)] = 0;
-                            SIDE_SMASH[entry_id(module_accessor)] = false;
-                            SIDE_SMASH_HOLD[entry_id(module_accessor)] = false;
-                        }
-                    }
-                }
                 if StopModule::is_damage(module_accessor) {
-                    SIDE_SMASH_COOL_DOWN[entry_id(module_accessor)] = 0;
                     SIDE_SMASH[entry_id(module_accessor)] = false;
-                    DOWN_SMASH_COOL_DOWN[entry_id(module_accessor)] = 0;
                     DOWN_SMASH[entry_id(module_accessor)] = false;
                     SIDE_SMASH_HOLD[entry_id(module_accessor)] = false;
                     DOWN_SMASH_HOLD[entry_id(module_accessor)] = false;
@@ -4366,6 +4358,30 @@ pub fn moves_lag(fighter: &mut L2CFighterCommon) {
                     if DOWN_SMASH[entry_id(module_accessor)] == false {
                         MotionModule::set_frame(module_accessor,65.0,false);
                         DOWN_SMASH[entry_id(module_accessor)] = true;
+                    }
+                }
+                if MotionModule::is_end(module_accessor) {
+                    SIDE_SMASH[entry_id(module_accessor)] = false;
+                    DOWN_SMASH[entry_id(module_accessor)] = false;
+                }
+                if MotionModule::motion_kind(module_accessor) == smash::hash40("special_air_n") || MotionModule::motion_kind(module_accessor) == smash::hash40("special_n") {
+                    if MotionModule::motion_kind(module_accessor) == smash::hash40("special_air_n") && MotionModule::frame(module_accessor) >= 18.0 {
+                        FRAME[entry_id(module_accessor)] = MotionModule::frame(module_accessor);
+                        CHECK[entry_id(module_accessor)] = true;
+                    }
+                    if MotionModule::motion_kind(module_accessor) == smash::hash40("special_n") && CHECK[entry_id(module_accessor)] == true {
+                        MotionModule::set_frame(module_accessor,FRAME[entry_id(module_accessor)],false);
+                        CHECK[entry_id(module_accessor)] = false;
+                    }
+                }
+                if MotionModule::motion_kind(module_accessor) == smash::hash40("special_air_n_lb") || MotionModule::motion_kind(module_accessor) == smash::hash40("special_n_lb") {
+                    if MotionModule::motion_kind(module_accessor) == smash::hash40("special_air_n_lb") && MotionModule::frame(module_accessor) >= 16.0 {
+                        FRAME[entry_id(module_accessor)] = MotionModule::frame(module_accessor);
+                        CHECK[entry_id(module_accessor)] = true;
+                    }
+                    if MotionModule::motion_kind(module_accessor) == smash::hash40("special_n_lb") && CHECK[entry_id(module_accessor)] == true {
+                        MotionModule::set_frame(module_accessor,FRAME[entry_id(module_accessor)],false);
+                        CHECK[entry_id(module_accessor)] = false;
                     }
                 }
             }
@@ -4441,7 +4457,7 @@ pub fn victory_theme(fighter: &mut L2CFighterCommon) {
     }
 }
 
-#[skyline::hook(offset=0x35ae700)] // 10.1.0
+#[skyline::hook(offset = MUSIC_OFFSET)] // 10.1.0
 pub fn music_function_replace(param_1: *mut u64,param_2: i64,nus3bank_hash: u64,nus3audio_hash: *const u64,mut nus3audio_index: u32) {
     unsafe {
         if let Some(_path) = ARC_FILES.0.get(&*nus3audio_hash) {
@@ -4457,18 +4473,6 @@ pub unsafe fn is_enable_transition_term_replace(module_accessor: &mut BattleObje
     let fighter_kind = smash::app::utility::get_kind(module_accessor);
     let ret = original!()(module_accessor,term);
     if fighter_kind == *FIGHTER_KIND_CLOUD {
-        if DOWN_SMASH[entry_id(module_accessor)] || SIDE_SMASH[entry_id(module_accessor)] || UP_SMASH[entry_id(module_accessor)] {
-            if term != *FIGHTER_STATUS_TRANSITION_TERM_ID_FALL && term != *FIGHTER_STATUS_TRANSITION_TERM_ID_SLIP
-            && term != *FIGHTER_STATUS_TRANSITION_TERM_ID_CAPTURE_CUT && term != *FIGHTER_STATUS_TRANSITION_TERM_ID_CLIFF_CATCH
-            && term != *FIGHTER_STATUS_TRANSITION_TERM_ID_DAMAGE_FALL && term != *FIGHTER_STATUS_TRANSITION_TERM_ID_CAPTURE_WAIT
-            && term != *FIGHTER_STATUS_TRANSITION_TERM_ID_DAMAGE_FLY_REFLECT_L && term != *FIGHTER_STATUS_TRANSITION_TERM_ID_DAMAGE_FLY_REFLECT_R
-            && term != *FIGHTER_STATUS_TRANSITION_TERM_ID_DAMAGE_FLY_REFLECT_U && term != *FIGHTER_STATUS_TRANSITION_TERM_ID_DAMAGE_FLY_REFLECT_D {
-                return false;
-            }
-            else {
-                return ret;
-            }
-        }
         if SPECIAL_LW_COUNTER[entry_id(module_accessor)] {
             if SPECIAL_LW_COUNTER_CHECK[entry_id(module_accessor)] {
                 if term != *FIGHTER_STATUS_TRANSITION_TERM_ID_FALL && term != *FIGHTER_STATUS_TRANSITION_TERM_ID_SLIP
@@ -4508,7 +4512,7 @@ pub unsafe fn is_enable_transition_term_replace(module_accessor: &mut BattleObje
     }
 }
 
-#[skyline::hook(offset=0x4dedc0)]
+#[skyline::hook(offset = FLOAT_OFFSET)]
 pub unsafe fn get_param_float_replace(boma: u64, param_type: u64, param_hash: u64) -> f32 {
     let module_accessor = &mut *(*((boma as *mut u64).offset(1)) as *mut BattleObjectModuleAccessor);
     let ret = original!()(boma, param_type, param_hash);
@@ -4710,7 +4714,7 @@ pub unsafe fn get_param_float_replace(boma: u64, param_type: u64, param_hash: u6
     }
 }
 
-#[skyline::hook(offset=0x4ded80)]
+#[skyline::hook(offset = INT_OFFSET)]
 pub unsafe fn get_param_int_replace(boma: u64, param_type: u64, param_hash: u64) -> i32 {
     let module_accessor = &mut *(*((boma as *mut u64).offset(1)) as *mut BattleObjectModuleAccessor);
     let ret = original!()(boma, param_type, param_hash);
@@ -4765,7 +4769,39 @@ pub unsafe fn get_param_int_replace(boma: u64, param_type: u64, param_hash: u64)
     }
 }
 
+fn find_subsequence(haystack: &[u8], needle: &[u8]) -> Option<usize> {
+    haystack.windows(needle.len()).position(|window| window == needle)
+}
+
+static MUSIC_SEARCH_CODE: &[u8] = &[
+    0xfc, 0x6f, 0xba, 0xa9, 0xfa, 0x67, 0x01, 0xa9, 0xf8, 0x5f, 0x02, 0xa9, 0xf6, 0x57, 0x03, 0xa9,
+    0xf4, 0x4f, 0x04, 0xa9, 0xfd, 0x7b, 0x05, 0xa9, 0xfd, 0x43, 0x01, 0x91, 0xff, 0xc3, 0x1b, 0xd1,
+    0xe8, 0x63, 0x05, 0x91,
+];
+
+static FLOAT_SEARCH_CODE: &[u8] = &[
+    0x00, 0x1c, 0x40, 0xf9, 0x08, 0x00, 0x40, 0xf9, 0x03, 0x19, 0x40, 0xf9,
+];
+
+static INT_SEARCH_CODE: &[u8] = &[
+    0x00, 0x1c, 0x40, 0xf9, 0x08, 0x00, 0x40, 0xf9, 0x03, 0x11, 0x40, 0xf9,
+];
+
 pub fn install() {
+    unsafe {
+        let text_ptr = getRegionAddress(Region::Text) as *const u8;
+        let text_size = (getRegionAddress(Region::Rodata) as usize) - (text_ptr as usize);
+        let text = std::slice::from_raw_parts(text_ptr, text_size);
+        if let Some(offset) = find_subsequence(text, MUSIC_SEARCH_CODE) {
+            MUSIC_OFFSET = offset;
+        }
+        if let Some(offset) = find_subsequence(text, FLOAT_SEARCH_CODE) {
+            FLOAT_OFFSET = offset;
+        }
+        if let Some(offset) = find_subsequence(text, INT_SEARCH_CODE) {
+            INT_OFFSET = offset;
+        }
+    }
     acmd::add_hooks!(
         attack_11,
         attack_12,
