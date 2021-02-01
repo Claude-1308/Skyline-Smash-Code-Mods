@@ -6,7 +6,7 @@ use smash::hash40;
 use crate::FIGHTER_MANAGER;
 use skyline::nn::ro::LookupSymbol;
 
-static mut DOYLE_FRAMES : [f32; 8] = [3000.0; 8];
+static mut DOYLE_FRAMES : [f32; 8] = [2000.0; 8];
 static mut DOYLE_FLAG : [bool; 8] = [false; 8];
 static mut ENTRY_ID : usize = 0;
 static mut GAUGE_FRAMES : [i32; 8] = [90; 8];
@@ -15,6 +15,11 @@ static mut REBIRTH_FRAME : [i32; 8] = [1; 8];
 static mut REBEL_GAUGE : [f32; 8] = [100.0; 8];
 static mut SUSPEND_DOYLE : [bool; 8] = [false; 8];
 static mut SUSPENSION_TRIGGER : [bool; 8] = [false; 8];
+static mut CREATE : [bool; 8] = [false; 8];
+static mut WAIT : [i32; 8] = [90; 8];
+static mut ZERO_LIFE : [bool; 8] = [false; 8];
+static mut SET_ZERO : [bool; 8] = [false; 8];
+static mut ZERO : [bool; 8] = [false; 8];
 
 #[acmd_func(
     battle_object_category = BATTLE_OBJECT_CATEGORY_FIGHTER, 
@@ -81,8 +86,8 @@ pub fn joker_air_lw_attack(fighter: &mut L2CFighterCommon) {
             let mut dmg = 0.0;
             let mut effect = smash::hash40("collision_attr_purple");
             if FighterInformation::is_operation_cpu(FighterManager::get_fighter_information(fighter_manager,smash::app::FighterEntryID(ENTRY_ID as i32))) == false {
-                dmg = 4.0;
-                effect = smash::hash40("collision_attr_slip");
+                dmg = 6.0;
+                effect = smash::hash40("collision_attr_purple");
             }
             else {
                 dmg = 2.4;
@@ -108,7 +113,7 @@ pub fn joker_air_lw_attack(fighter: &mut L2CFighterCommon) {
     });
 }
 
-pub fn once_per_fighter_frame(fighter: &mut L2CFighterCommon) {
+pub fn joker(fighter: &mut L2CFighterCommon) {
     unsafe {
         let lua_state = fighter.lua_state_agent;
         let module_accessor = smash::app::sv_system::battle_object_module_accessor(lua_state);
@@ -129,8 +134,36 @@ pub fn once_per_fighter_frame(fighter: &mut L2CFighterCommon) {
             || MotionModule::motion_kind(module_accessor) == smash::hash40("appeal_s_l") || MotionModule::motion_kind(module_accessor) == smash::hash40("appeal_s_r") {
                 CancelModule::enable_cancel(module_accessor);
             }
-            if ControlModule::check_button_trigger(module_accessor,*CONTROL_PAD_BUTTON_APPEAL_HI) && DOYLE_FRAMES[ENTRY_ID] > 0.0
-            && GAUGE_FLAG[ENTRY_ID] == false && WorkModule::is_flag(module_accessor,*FIGHTER_JACK_INSTANCE_WORK_ID_FLAG_DOYLE) == false {
+            if ArticleModule::is_exist(module_accessor,*FIGHTER_JACK_GENERATE_ARTICLE_DOYLE) == false && FighterManager::is_result_mode(fighter_manager) == false
+            && FighterManager::is_result_mode(fighter_manager) == false && smash::app::smashball::is_training_mode() == false && REBEL_GAUGE[ENTRY_ID] > 0.0 {
+                CREATE[ENTRY_ID] = true;
+            }
+            if CREATE[ENTRY_ID] {
+                WAIT[ENTRY_ID] -= 1;
+                if WAIT[ENTRY_ID] == 0 {
+                    CREATE[ENTRY_ID] = false;
+                    WAIT[ENTRY_ID] = 90;
+                    SET_ZERO[ENTRY_ID] = true;
+                    ArticleModule::generate_article(module_accessor,*FIGHTER_JACK_GENERATE_ARTICLE_DOYLE,false,0);
+                }
+            }
+            if ControlModule::check_button_on_trriger(module_accessor,*CONTROL_PAD_BUTTON_ATTACK) && DOYLE_FLAG[ENTRY_ID] == false && REBEL_GAUGE[ENTRY_ID] > 0.0 {
+                WorkModule::set_flag(module_accessor,true,*FIGHTER_JACK_INSTANCE_WORK_ID_FLAG_DOYLE);
+            }
+            if WorkModule::is_flag(module_accessor,*FIGHTER_JACK_INSTANCE_WORK_ID_FLAG_DOYLE) && DOYLE_FLAG[ENTRY_ID] == false {
+                if AttackModule::is_infliction_status(module_accessor,*COLLISION_KIND_MASK_HIT) {
+                    WorkModule::set_flag(module_accessor,true,*FIGHTER_JACK_INSTANCE_WORK_ID_FLAG_ADD_REBEL_GAUGE);
+                    DOYLE_FRAMES[ENTRY_ID] -= 1.0;
+                    REBEL_GAUGE[ENTRY_ID] -= 0.05;
+                    smash::app::FighterSpecializer_Jack::add_rebel_gauge(module_accessor,smash::app::FighterEntryID(ENTRY_ID as i32),-0.1);
+                }
+            }
+            let motion = MotionModule::motion_kind(module_accessor);
+            if MotionModule::frame(module_accessor) as i32 == FighterMotionModuleImpl::get_cancel_frame(module_accessor,smash::phx::Hash40::new_raw(motion),false)
+            && ZERO_LIFE[ENTRY_ID] && DOYLE_FLAG[ENTRY_ID] == false && REBEL_GAUGE[ENTRY_ID] > 0.0 {
+                WorkModule::set_flag(module_accessor,false,*FIGHTER_JACK_INSTANCE_WORK_ID_FLAG_DOYLE);
+            }
+            if ControlModule::check_button_trigger(module_accessor,*CONTROL_PAD_BUTTON_APPEAL_HI) && DOYLE_FRAMES[ENTRY_ID] > 0.0 && GAUGE_FLAG[ENTRY_ID] == false {
                 WorkModule::set_flag(module_accessor,true,*FIGHTER_JACK_INSTANCE_WORK_ID_FLAG_ADD_REBEL_GAUGE);
                 smash::app::FighterSpecializer_Jack::add_rebel_gauge(module_accessor,smash::app::FighterEntryID(ENTRY_ID as i32),100.0);
                 DOYLE_FLAG[ENTRY_ID] = true;
@@ -142,13 +175,18 @@ pub fn once_per_fighter_frame(fighter: &mut L2CFighterCommon) {
             }
             if DOYLE_FLAG[ENTRY_ID] {
                 DOYLE_FRAMES[ENTRY_ID] -= 1.0;
-                if DOYLE_FRAMES[ENTRY_ID] % 3.0 == 0.0 {
-                    REBEL_GAUGE[ENTRY_ID] -= 0.1;
+                if DOYLE_FRAMES[ENTRY_ID] % 1.0 == 0.0 {
+                    REBEL_GAUGE[ENTRY_ID] -= 0.05;
                 }
-                if DOYLE_FRAMES[ENTRY_ID] == 0.0 {
+                if DOYLE_FRAMES[ENTRY_ID] <= 0.0 {
                     DOYLE_FLAG[ENTRY_ID] = false;
                     SUSPEND_DOYLE[ENTRY_ID] = true;
+                    REBEL_GAUGE[ENTRY_ID] = 0.0;
                 }
+            }
+            if REBEL_GAUGE[ENTRY_ID] <= 0.0 && ZERO[ENTRY_ID] == false {
+                ArticleModule::remove_exist(module_accessor,*FIGHTER_JACK_GENERATE_ARTICLE_DOYLE,smash::app::ArticleOperationTarget(*ARTICLE_OPE_TARGET_ALL));
+                ZERO[ENTRY_ID] = true;
             }
             if GAUGE_FLAG[ENTRY_ID] {
                 if GAUGE_FRAMES[ENTRY_ID] >= 2 {
@@ -174,7 +212,7 @@ pub fn once_per_fighter_frame(fighter: &mut L2CFighterCommon) {
                 WorkModule::set_flag(module_accessor,true,*FIGHTER_JACK_INSTANCE_WORK_ID_FLAG_ADD_REBEL_GAUGE);
                 smash::app::FighterSpecializer_Jack::add_rebel_gauge(module_accessor,smash::app::FighterEntryID(ENTRY_ID as i32),0.82);
                 REBEL_GAUGE[ENTRY_ID] = 100.0;
-                DOYLE_FRAMES[ENTRY_ID] = 3000.0;
+                DOYLE_FRAMES[ENTRY_ID] = 2000.0;
                 DOYLE_FLAG[ENTRY_ID] = false;
             }
             if StatusModule::prev_status_kind(module_accessor,0) == *FIGHTER_STATUS_KIND_REBIRTH {
@@ -186,7 +224,7 @@ pub fn once_per_fighter_frame(fighter: &mut L2CFighterCommon) {
                 WorkModule::set_flag(module_accessor,true,*FIGHTER_JACK_INSTANCE_WORK_ID_FLAG_ADD_REBEL_GAUGE);
                 smash::app::FighterSpecializer_Jack::add_rebel_gauge(module_accessor,smash::app::FighterEntryID(ENTRY_ID as i32),99.9);
                 REBEL_GAUGE[ENTRY_ID] = 100.0;
-                DOYLE_FRAMES[ENTRY_ID] = 3000.0;
+                DOYLE_FRAMES[ENTRY_ID] = 2000.0;
                 DOYLE_FLAG[ENTRY_ID] = false;
                 REBIRTH_FRAME[ENTRY_ID] = 1;
             }
@@ -194,7 +232,7 @@ pub fn once_per_fighter_frame(fighter: &mut L2CFighterCommon) {
     }
 }
 
-pub fn once_per_weapon_frame(weapon: &mut L2CFighterBase) {
+pub fn arsene(weapon: &mut L2CFighterBase) {
     unsafe {
         let weapon_module_accessor = smash::app::sv_system::battle_object_module_accessor(weapon.lua_state_agent);
         let owner_module_accessor = smash::app::sv_battle_object::module_accessor((WorkModule::get_int(weapon_module_accessor, *WEAPON_INSTANCE_WORK_ID_INT_LINK_OWNER)) as u32);
@@ -203,10 +241,10 @@ pub fn once_per_weapon_frame(weapon: &mut L2CFighterBase) {
         if weapon_kind == *WEAPON_KIND_JACK_DOYLE {
             if DOYLE_FLAG[ENTRY_ID] {
                 let current_doyle_life = WorkModule::get_float(weapon_module_accessor,*WEAPON_JACK_DOYLE_INSTANCE_WORK_ID_FLOAT_LIFE);
-                if (DOYLE_FRAMES[ENTRY_ID] * 0.6) != current_doyle_life {
-                    WorkModule::add_float(weapon_module_accessor,(DOYLE_FRAMES[ENTRY_ID] * 0.6) - current_doyle_life,*WEAPON_JACK_DOYLE_INSTANCE_WORK_ID_FLOAT_LIFE);
+                if (DOYLE_FRAMES[ENTRY_ID] * 0.9) != current_doyle_life {
+                    WorkModule::add_float(weapon_module_accessor,(DOYLE_FRAMES[ENTRY_ID] * 0.9) - current_doyle_life,*WEAPON_JACK_DOYLE_INSTANCE_WORK_ID_FLOAT_LIFE);
                 }
-                WorkModule::add_float(weapon_module_accessor,-0.6,*WEAPON_JACK_DOYLE_INSTANCE_WORK_ID_FLOAT_LIFE);
+                WorkModule::add_float(weapon_module_accessor,-0.9,*WEAPON_JACK_DOYLE_INSTANCE_WORK_ID_FLOAT_LIFE);
             }
             if SUSPENSION_TRIGGER[ENTRY_ID] {
                 WorkModule::add_float(weapon_module_accessor,-1.0,*WEAPON_JACK_DOYLE_INSTANCE_WORK_ID_FLOAT_LIFE);
@@ -218,12 +256,22 @@ pub fn once_per_weapon_frame(weapon: &mut L2CFighterBase) {
                 WorkModule::set_float(weapon_module_accessor,1.0,*WEAPON_JACK_DOYLE_INSTANCE_WORK_ID_FLOAT_LIFE);
                 SUSPENSION_TRIGGER[ENTRY_ID] = true;
             }
+            if WorkModule::get_float(weapon_module_accessor,*WEAPON_JACK_DOYLE_INSTANCE_WORK_ID_FLOAT_LIFE) == 0.0 {
+                ZERO_LIFE[ENTRY_ID] = true;
+            }
+            else {
+                ZERO_LIFE[ENTRY_ID] = false;
+            }
+            if SET_ZERO[ENTRY_ID] {
+                WorkModule::set_float(weapon_module_accessor,1.0,*WEAPON_JACK_DOYLE_INSTANCE_WORK_ID_FLOAT_LIFE);
+                SET_ZERO[ENTRY_ID] = false;
+            }
         }
     }
 }
 
 pub fn install() {
     acmd::add_hooks!(joker_air_lw_attack,joker_lw_attack);
-    acmd::add_custom_hooks!(once_per_fighter_frame);
-    acmd::add_custom_weapon_hooks!(once_per_weapon_frame);
+    acmd::add_custom_hooks!(joker);
+    acmd::add_custom_weapon_hooks!(arsene);
 }
