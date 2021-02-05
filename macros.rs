@@ -179,37 +179,6 @@ pub unsafe fn SET_SPEED_EX<A: ToF32, B: ToF32>(fighter: &mut L2CAgentBase, speed
 }
 
 #[inline]
-pub unsafe fn SLOW_OPPONENT(fighter: &mut L2CAgentBase, slow_mul: f32, slow_time: f32) {
-    fighter.clear_lua_stack();
-    lua_args!(fighter, slow_mul, slow_time);
-    sv_animcmd::SLOW_OPPONENT(fighter.lua_state_agent);
-    fighter.clear_lua_stack();
-}
-
-#[inline]
-pub unsafe fn FT_SET_FINAL_FEAR_FACE(fighter: &mut L2CAgentBase, unk: u64) {
-    fighter.clear_lua_stack();
-    lua_args!(fighter, unk);
-    sv_animcmd::FT_SET_FINAL_FEAR_FACE(fighter.lua_state_agent);
-    fighter.clear_lua_stack();
-}
-
-#[inline]
-pub unsafe fn CAM_ZOOM_OUT_FINAL(fighter: &mut L2CAgentBase) {
-    fighter.clear_lua_stack();
-    sv_animcmd::CAM_ZOOM_OUT_FINAL(fighter.lua_state_agent);
-    fighter.clear_lua_stack();
-}
-
-#[inline]
-pub unsafe fn CAM_ZOOM_IN_FINAL_arg13(fighter: &mut L2CAgentBase, x: f32, y: f32, z: f32, unk1: i32, unk2: u64, unk3: u64, unk4: i32, unk5: u64, unk6: bool, object_id: u32, unk7: u64, unk8: i32, unk9: u64) {
-    fighter.clear_lua_stack();
-    lua_args!(fighter, x, y, z, unk1, unk2, unk3, unk4, unk5, unk6, object_id, unk7 ,unk8, unk9);
-    sv_animcmd::CAM_ZOOM_OUT_FINAL(fighter.lua_state_agent);
-    fighter.clear_lua_stack();
-}
-
-#[inline]
 pub unsafe fn ATK_SET_SHIELD_SETOFF_MUL<A: ToF32>(fighter: &mut L2CAgentBase, id: u64, val: A) {
     fighter.clear_lua_stack();
     lua_args!(fighter, id, val.to_f32());
