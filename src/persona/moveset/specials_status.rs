@@ -78,7 +78,7 @@ pub unsafe fn fire2_fly_main(weapon: &mut L2CFighterBase) -> L2CValue {
     let mut angle = WorkModule::get_param_float(module_accessor,param_type,hash40("angle"));
     let mut speed = WorkModule::get_param_float(module_accessor,param_type,hash40("speed"));
     let owner_module_accessor = sv_battle_object::module_accessor((WorkModule::get_int(module_accessor, *WEAPON_INSTANCE_WORK_ID_INT_LINK_OWNER)) as u32);
-    let owner_owner_module_accessor = sv_battle_object::module_accessor((WorkModule::get_int(module_accessor, *WEAPON_INSTANCE_WORK_ID_INT_LINK_OWNER)) as u32);
+    let owner_owner_module_accessor = sv_battle_object::module_accessor((WorkModule::get_int(owner_module_accessor, *WEAPON_INSTANCE_WORK_ID_INT_LINK_OWNER)) as u32);
     if WorkModule::get_int(owner_owner_module_accessor,FIGHTER_JACK_INSTANCE_WORK_ID_INT_PERSONA_KIND) == PERSONA_KIND_FORTUNA {
         angle = -11.0;
     }
