@@ -16,7 +16,7 @@ pub mod JackModule {
     
     lazy_static! {
         pub static ref JACK_PARAMS: RwLock<HashMap<String, HashMap<String, f32>>> = RwLock::new({
-            let json_string = std::fs::read_to_string("sd:/ultimate/mods/c01-7 Kasumi + personas/fighter/jack/param/param.json").unwrap();
+            let json_string = std::fs::read_to_string("sd:/ultimate/mods/personas/fighter/jack/param/param.json").unwrap();
             serde_json::from_str(json_string.as_str()).unwrap()
         });
     }
@@ -66,7 +66,7 @@ pub mod JackModule {
       
     pub unsafe fn reload_params() {
         *JACK_PARAMS.write() = {
-            let json_string = std::fs::read_to_string("sd:/ultimate/mods/c01-7 Kasumi + personas/fighter/jack/param/param.json").unwrap();
+            let json_string = std::fs::read_to_string("sd:/ultimate/mods/personas/fighter/jack/param/param.json").unwrap();
             serde_json::from_str(json_string.as_str()).unwrap()
         };
     }
