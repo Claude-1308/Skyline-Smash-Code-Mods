@@ -91,6 +91,7 @@ pub unsafe fn cloud_waza_setup(unk: u8, battle_object: *mut BattleObject) {
     }
 }
 
+//referenced from HDR's Joker meter writeup
 #[repr(C)]
 struct LinkEventLimitGaugeUpdate {
     unk_id: u32,
