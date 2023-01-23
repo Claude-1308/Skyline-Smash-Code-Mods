@@ -45,8 +45,7 @@ pub const FIGHTER_CLOUD_INSTANCE_WORK_ID_FLAG_BURST_BEAM: i32 = 0x200000f1;
 pub const FIGHTER_CLOUD_INSTANCE_WORK_ID_FLAG_SET_AIR: i32 = 0x200000f2;
 pub const FIGHTER_CLOUD_INSTANCE_WORK_ID_FLAG_UNABLE_GRAVITY: i32 = 0x200000f3;
 pub const FIGHTER_CLOUD_INSTANCE_WORK_ID_FLAG_RAIN_WAVE: i32 = 0x200000f4;
-pub const FIGHTER_CLOUD_INSTANCE_WORK_ID_FLAG_SET_WAZA: i32 = 0x200000f5;
-pub const FIGHTER_CLOUD_INSTANCE_WORK_ID_FLAG_BRAVER_NO_EFFECT: i32 = 0x200000f6;
+pub const FIGHTER_CLOUD_INSTANCE_WORK_ID_FLAG_BRAVER_NO_EFFECT: i32 = 0x200000f5;
 
 pub const FIGHTER_CLOUD_INSTANCE_WORK_ID_INT_SLASH_COUNT: i32 = 0x100000c6;
 pub const FIGHTER_CLOUD_INSTANCE_WORK_ID_INT_LIMIT_BREAK_LEVEL: i32 = 0x100000c7;
@@ -94,9 +93,9 @@ pub unsafe fn dead_pre(fighter: &mut L2CFighterCommon) -> L2CValue {
     let lua_state = fighter.lua_state_agent;
     let module_accessor = smash::app::sv_system::battle_object_module_accessor(lua_state);
     CloudModule::reset_swords(module_accessor);
+    let lua_module = *(module_accessor as *mut smash::app::BattleObjectModuleAccessor as *mut u64).add(0x190 / 8);
+    waza_customize(lua_module,*FIGHTER_STATUS_KIND_SPECIAL_LW,*FIGHTER_WAZA_CUSTOMIZE_TO_SPECIAL_LW_1);
     if WorkModule::get_int(module_accessor,FIGHTER_CLOUD_INSTANCE_WORK_ID_INT_LIMIT_BREAK_LEVEL) == LIMIT_BREAK_LEVEL_4 {
-        let lua_module = *(module_accessor as *mut smash::app::BattleObjectModuleAccessor as *mut u64).add(0x190 / 8);
-        waza_customize(lua_module,*FIGHTER_STATUS_KIND_SPECIAL_LW,*FIGHTER_WAZA_CUSTOMIZE_TO_SPECIAL_LW_1);
         WorkModule::set_int(module_accessor,LIMIT_BREAK_LEVEL_1,FIGHTER_CLOUD_INSTANCE_WORK_ID_INT_LIMIT_BREAK_LEVEL);
     }
     fighter.status_pre_Dead()
@@ -117,7 +116,8 @@ pub unsafe fn final_dash_end_end(fighter: &mut L2CFighterCommon) -> L2CValue {
     WorkModule::set_float(module_accessor,0.0,*FIGHTER_CLOUD_INSTANCE_WORK_ID_FLOAT_LIMIT_GAUGE);
     WorkModule::set_int(module_accessor,LIMIT_BREAK_LEVEL_1,FIGHTER_CLOUD_INSTANCE_WORK_ID_INT_LIMIT_BREAK_LEVEL);
     WorkModule::set_float(module_accessor,0.0,*FIGHTER_CLOUD_INSTANCE_WORK_ID_FLOAT_LIMIT_GAUGE_NOTICE);
-    WorkModule::set_int(module_accessor,0,*FIGHTER_CLOUD_INSTANCE_WORK_ID_INT_LIMIT_BREAK_CLEAR_FRAME);
+    let entry_id = WorkModule::get_int(module_accessor,*FIGHTER_INSTANCE_WORK_ID_INT_ENTRY_ID);
+    send_limit_gauge_event(entry_id);
     original!(fighter)
 }
 
@@ -128,7 +128,32 @@ pub unsafe fn final_end_end(fighter: &mut L2CFighterCommon) -> L2CValue {
     WorkModule::set_float(module_accessor,0.0,*FIGHTER_CLOUD_INSTANCE_WORK_ID_FLOAT_LIMIT_GAUGE);
     WorkModule::set_int(module_accessor,LIMIT_BREAK_LEVEL_1,FIGHTER_CLOUD_INSTANCE_WORK_ID_INT_LIMIT_BREAK_LEVEL);
     WorkModule::set_float(module_accessor,0.0,*FIGHTER_CLOUD_INSTANCE_WORK_ID_FLOAT_LIMIT_GAUGE_NOTICE);
-    WorkModule::set_int(module_accessor,0,*FIGHTER_CLOUD_INSTANCE_WORK_ID_INT_LIMIT_BREAK_CLEAR_FRAME);
+    let entry_id = WorkModule::get_int(module_accessor,*FIGHTER_INSTANCE_WORK_ID_INT_ENTRY_ID);
+    send_limit_gauge_event(entry_id);
+    original!(fighter)
+}
+
+#[status_script(agent = "cloud", status = FIGHTER_CLOUD_STATUS_KIND_FINAL2_DASH_END, condition = LUA_SCRIPT_STATUS_FUNC_STATUS_END)]
+pub unsafe fn final2_dash_end_end(fighter: &mut L2CFighterCommon) -> L2CValue {
+    let lua_state = fighter.lua_state_agent;
+    let module_accessor = smash::app::sv_system::battle_object_module_accessor(lua_state);
+    WorkModule::set_float(module_accessor,0.0,*FIGHTER_CLOUD_INSTANCE_WORK_ID_FLOAT_LIMIT_GAUGE);
+    WorkModule::set_int(module_accessor,LIMIT_BREAK_LEVEL_1,FIGHTER_CLOUD_INSTANCE_WORK_ID_INT_LIMIT_BREAK_LEVEL);
+    WorkModule::set_float(module_accessor,0.0,*FIGHTER_CLOUD_INSTANCE_WORK_ID_FLOAT_LIMIT_GAUGE_NOTICE);
+    let entry_id = WorkModule::get_int(module_accessor,*FIGHTER_INSTANCE_WORK_ID_INT_ENTRY_ID);
+    send_limit_gauge_event(entry_id);
+    original!(fighter)
+}
+
+#[status_script(agent = "cloud", status = FIGHTER_CLOUD_STATUS_KIND_FINAL2_END, condition = LUA_SCRIPT_STATUS_FUNC_STATUS_END)]
+pub unsafe fn final2_end_end(fighter: &mut L2CFighterCommon) -> L2CValue {
+    let lua_state = fighter.lua_state_agent;
+    let module_accessor = smash::app::sv_system::battle_object_module_accessor(lua_state);
+    WorkModule::set_float(module_accessor,0.0,*FIGHTER_CLOUD_INSTANCE_WORK_ID_FLOAT_LIMIT_GAUGE);
+    WorkModule::set_int(module_accessor,LIMIT_BREAK_LEVEL_1,FIGHTER_CLOUD_INSTANCE_WORK_ID_INT_LIMIT_BREAK_LEVEL);
+    WorkModule::set_float(module_accessor,0.0,*FIGHTER_CLOUD_INSTANCE_WORK_ID_FLOAT_LIMIT_GAUGE_NOTICE);
+    let entry_id = WorkModule::get_int(module_accessor,*FIGHTER_INSTANCE_WORK_ID_INT_ENTRY_ID);
+    send_limit_gauge_event(entry_id);
     original!(fighter)
 }
 
@@ -207,7 +232,9 @@ pub fn install() {
         dead_pre,
         demo_pre,
         final_dash_end_end,
-        final_end_end
+        final_end_end,
+        final2_dash_end_end,
+        final2_end_end
     );
     install_agent_frames!(
         cloud,
