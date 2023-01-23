@@ -38,12 +38,10 @@ pub unsafe fn limit_manager(amount: f32, module_accessor: *mut BattleObjectModul
                     WorkModule::set_int64(module_accessor,effect as i64,*FIGHTER_CLOUD_INSTANCE_WORK_ID_INT_LIMIT_GAUGE_EFFECT);
                 }
                 WorkModule::on_flag(module_accessor,*FIGHTER_CLOUD_INSTANCE_WORK_ID_FLAG_LIMIT_BREAK);
-                WorkModule::on_flag(module_accessor,FIGHTER_CLOUD_INSTANCE_WORK_ID_FLAG_SET_WAZA);
-                //WorkModule::on_flag(module_accessor,*FIGHTER_CLOUD_INSTANCE_WORK_ID_FLAG_LIMIT_BREAK_SET_CUSTOM);
+                WorkModule::on_flag(module_accessor,*FIGHTER_CLOUD_INSTANCE_WORK_ID_FLAG_LIMIT_BREAK_SET_CUSTOM);
                 FighterUtil::flash_eye_info(module_accessor);
                 SoundModule::play_se(module_accessor,Hash40::new("se_cloud_special_l03"),true,false,false,false,enSEType(0));
             }
-            //let limit_break_clear_frame = WorkModule::get_param_int(module_accessor,hash40("param_special_lw"),hash40("limit_break_clear_frame"));
             WorkModule::set_int(module_accessor,i32::MAX,*FIGHTER_CLOUD_INSTANCE_WORK_ID_INT_LIMIT_BREAK_CLEAR_FRAME);
         }
         else {
@@ -61,34 +59,85 @@ pub unsafe fn limit_manager(amount: f32, module_accessor: *mut BattleObjectModul
     }
 }
 
-/*#[skyline::hook(offset = 0x8dd8f0, inline)]
-pub unsafe fn limit_break_off_fix(ctx: &mut InlineCtx) {
-    let module_accessor: &mut BattleObjectModuleAccessor = std::mem::transmute(*ctx.registers[23].x.as_ref());
-    if WorkModule::is_flag(module_accessor,FIGHTER_CLOUD_INSTANCE_WORK_ID_FLAG_RELEASE_LIMIT) == false {
-        *ctx.registers[0].w.as_mut() = 0;
-    }
-    else {
-        *ctx.registers[0].w.as_mut() = 1;
-    }
-}*/
-
 #[skyline::from_offset(0x6dd280)]
 pub fn waza_customize(lua_module: u64,status: i32,customize_to: i32);
 
 #[skyline::hook(offset=0x8dd7d0)]
 pub unsafe fn cloud_waza_setup(unk: u8, battle_object: *mut BattleObject) {
     let module_accessor = (*(battle_object)).module_accessor;
-    if WorkModule::is_flag(module_accessor,FIGHTER_CLOUD_INSTANCE_WORK_ID_FLAG_SET_WAZA) {
+    if WorkModule::is_flag(module_accessor,*FIGHTER_CLOUD_INSTANCE_WORK_ID_FLAG_LIMIT_BREAK_SET_CUSTOM) {
         let lua_module = *(module_accessor as *mut BattleObjectModuleAccessor as *mut u64).add(0x190 / 8);
         waza_customize(lua_module,*FIGHTER_STATUS_KIND_SPECIAL_N,*FIGHTER_WAZA_CUSTOMIZE_TO_SPECIAL_N_2);
         waza_customize(lua_module,*FIGHTER_STATUS_KIND_SPECIAL_LW,*FIGHTER_WAZA_CUSTOMIZE_TO_SPECIAL_LW_2);
-        WorkModule::off_flag(module_accessor,FIGHTER_CLOUD_INSTANCE_WORK_ID_FLAG_SET_WAZA);
+        WorkModule::on_flag(module_accessor,*FIGHTER_INSTANCE_WORK_ID_FLAG_LIGHT_WEIGHT);
+        WorkModule::off_flag(module_accessor,*FIGHTER_CLOUD_INSTANCE_WORK_ID_FLAG_LIMIT_BREAK_SET_CUSTOM);
     }
-    if WorkModule::is_flag(module_accessor,*FIGHTER_CLOUD_INSTANCE_WORK_ID_FLAG_LIMIT_BREAK_SPECIAL) {
-        let lua_module = *(module_accessor as *mut BattleObjectModuleAccessor as *mut u64).add(0x190 / 8);
-        waza_customize(lua_module,*FIGHTER_STATUS_KIND_SPECIAL_LW,*FIGHTER_WAZA_CUSTOMIZE_TO_SPECIAL_LW_1);
+    else {
+        if WorkModule::is_flag(module_accessor,*FIGHTER_CLOUD_INSTANCE_WORK_ID_FLAG_LIMIT_BREAK_SPECIAL) {
+            EffectModule::kill_kind(module_accessor,Hash40::new("cloud_limitbreak_aura"),false,true);
+            EffectModule::remove_common(module_accessor,Hash40::new("cloud_limitbreak"));
+            let lua_module = *(module_accessor as *mut BattleObjectModuleAccessor as *mut u64).add(0x190 / 8);
+            waza_customize(lua_module,*FIGHTER_STATUS_KIND_SPECIAL_N,*FIGHTER_WAZA_CUSTOMIZE_TO_SPECIAL_N_1);
+            waza_customize(lua_module,*FIGHTER_STATUS_KIND_SPECIAL_LW,*FIGHTER_WAZA_CUSTOMIZE_TO_SPECIAL_LW_1);
+            WorkModule::off_flag(module_accessor,*FIGHTER_INSTANCE_WORK_ID_FLAG_LIGHT_WEIGHT);
+            WorkModule::off_flag(module_accessor,*FIGHTER_CLOUD_INSTANCE_WORK_ID_FLAG_LIMIT_BREAK);
+            WorkModule::off_flag(module_accessor,*FIGHTER_CLOUD_INSTANCE_WORK_ID_FLAG_LIMIT_BREAK_SPECIAL);
+            WorkModule::set_float(module_accessor,0.0,*FIGHTER_CLOUD_INSTANCE_WORK_ID_FLOAT_LIMIT_GAUGE);
+            WorkModule::set_float(module_accessor,0.0,*FIGHTER_CLOUD_INSTANCE_WORK_ID_FLOAT_LIMIT_GAUGE_NOTICE);
+            WorkModule::set_int(module_accessor,0,*FIGHTER_CLOUD_INSTANCE_WORK_ID_INT_LIMIT_BREAK_CLEAR_FRAME);
+            let entry_id = WorkModule::get_int(module_accessor,*FIGHTER_INSTANCE_WORK_ID_INT_ENTRY_ID);
+            send_limit_gauge_event(entry_id);
+        }
     }
-    original!()(unk,battle_object)
+}
+
+#[repr(C)]
+struct LinkEventLimitGaugeUpdate {
+    unk_id: u32,
+    id: u32,
+    vtable: *const u64,
+    unk: u32,
+    percentage: f32
+}
+
+#[skyline::from_offset(0x37ad140)]
+fn kill_dead_event_listeners(arg: *mut u32);
+
+pub unsafe fn send_limit_gauge_event(entry_id: i32) {
+    let fighter_manager = *(FIGHTER_MANAGER as *mut *mut smash::app::FighterManager);
+    let fighter_entry = smash::app::lua_bind::FighterManager::get_fighter_entry(fighter_manager, FighterEntryID(entry_id));
+    if !*(fighter_entry as *const bool).add(0x41E8) {
+        return;
+    }
+    let base = skyline::hooks::getRegionAddress(skyline::hooks::Region::Text) as u64;
+    let vtable_addr = base + 0x4f81e48;
+    let event = LinkEventLimitGaugeUpdate {
+        unk_id: *(fighter_entry as *const u32).add(0x41E4 / 0x4),
+        id: 0x4e,
+        vtable: vtable_addr as *const u64,
+        unk: 0,
+        percentage: 0.0
+    };
+    let event_listener_info = *(fighter_manager as *mut *mut u32);
+    let event_listener_count = *event_listener_info;
+    if event_listener_count <= 0x4e {
+        return;
+    }
+    *event_listener_info.add(6) += 1;
+    let linked_list_start = *(event_listener_info as *const u64).add(1) + 0x758;
+    let mut linked_list_next = *(linked_list_start as *const u64);
+    while linked_list_next != linked_list_start {
+        let listener = *(linked_list_next as *const u64).add(2);
+        if listener != 0 {
+            let callable: extern "C" fn(u64, *const LinkEventLimitGaugeUpdate) = std::mem::transmute(*((*(listener as *const u64) + 0x18) as *const u64));
+            callable(listener, &event);
+        }
+        linked_list_next = *(linked_list_next as *const u64);
+    }
+    *event_listener_info.add(6) -= 1;
+    if *event_listener_info.add(6) == 0 && *event_listener_info.add(7) != 0 {
+        kill_dead_event_listeners(event_listener_info);
+    }
 }
 
 #[fighter_reset]
@@ -99,17 +148,6 @@ pub fn cloud_status_init(fighter: &mut L2CFighterCommon) {
         }
     }
 }
-
-/*#[agent_reset]
-pub fn cloud_wave_status_init(weapon: &mut L2CFighterBase) {
-    unsafe {
-        if utility::get_kind(&mut *weapon.module_accessor) == *WEAPON_KIND_CLOUD_WAVE {
-            weapon.sv_set_status_func(WEAPON_CLOUD_WAVE_STATUS_KIND_METEOR.into(), LUA_SCRIPT_STATUS_FUNC_STATUS_MAIN.into(), &mut *(meteor_main as *const () as *mut c_void));
-            weapon.sv_set_status_func(WEAPON_CLOUD_WAVE_STATUS_KIND_METEOR_BLAST.into(), LUA_SCRIPT_STATUS_FUNC_STATUS_MAIN.into(), &mut *(meteor_blast_main as *const () as *mut c_void));
-            weapon.sv_set_status_func(WEAPON_CLOUD_WAVE_STATUS_KIND_METEOR_BLAST.into(), LUA_SCRIPT_STATUS_FUNC_STATUS_END.into(), &mut *(meteor_blast_end as *const () as *mut c_void));
-        }
-    }
-}*/
 
 unsafe extern "C" fn cloud_move_customizer(fighter: &mut L2CFighterCommon) -> L2CValue {
     let customize_to = WorkModule::get_int(fighter.module_accessor, *FIGHTER_INSTANCE_WORK_ID_INT_WAZA_CUSTOMIZE_TO);
