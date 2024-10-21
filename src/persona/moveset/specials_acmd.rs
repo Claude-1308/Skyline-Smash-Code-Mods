@@ -206,18 +206,15 @@ pub unsafe fn special_s1(fighter: &mut L2CAgentBase) {
         }
     }
     else if WorkModule::get_int(module_accessor,FIGHTER_JACK_INSTANCE_WORK_ID_INT_PERSONA_KIND) == PERSONA_KIND_OKUNINUSHI {
-        sv_animcmd::frame(lua_state,25.0);
+        sv_animcmd::frame(lua_state,15.0);
         if is_excute(fighter) {
-            VisibilityModule::set_whole(module_accessor,false);
-            let hack_move = JackModule::get_params("param_special_s","side_b_move_hack");
-            let pos = Vector2f{x: hack_move * (ControlModule::get_stick_x(module_accessor)/ControlModule::get_stick_x(module_accessor).abs()), y: 0.0};
-            PostureModule::add_pos_2d(module_accessor,&pos);
-            HitModule::set_status_all(module_accessor,HitStatus(*HIT_STATUS_XLU),0);
+            ATTACK(fighter,0,0,Hash40::new("top"),1.0,361,140,0,0,2.3,0.0,-1.7,2.5,None,None,None,1.0,1.0,*ATTACK_SETOFF_KIND_OFF,*ATTACK_LR_CHECK_F,false,0.0,0.0,0.0,true,true,false,false,false,*COLLISION_SITUATION_MASK_G,*COLLISION_CATEGORY_MASK_ALL,*COLLISION_PART_MASK_ALL,false,Hash40::new("collision_attr_bind"),*ATTACK_SOUND_LEVEL_S,*COLLISION_SOUND_ATTR_ELEC,*ATTACK_REGION_NONE);
+            ATTACK(fighter,1,0,Hash40::new("top"),3.0,361,150,0,30,3.0,0.0,-1.7,2.5,None,None,None,1.0,1.0,*ATTACK_SETOFF_KIND_OFF,*ATTACK_LR_CHECK_F,false,0.0,0.0,0.0,true,true,false,false,false,*COLLISION_SITUATION_MASK_A,*COLLISION_CATEGORY_MASK_ALL,*COLLISION_PART_MASK_ALL,false,Hash40::new("collision_attr_jack_bullet"),*ATTACK_SOUND_LEVEL_S,*COLLISION_SOUND_ATTR_ELEC,*ATTACK_REGION_NONE);
+            AttackModule::set_no_finish_camera(module_accessor, 0, true, false);
         }
-        sv_animcmd::frame(lua_state,30.0);
+        sv_animcmd::frame(lua_state,18.0);
         if is_excute(fighter) {
-            VisibilityModule::set_whole(module_accessor,true);
-            HitModule::set_status_all(module_accessor,HitStatus(*HIT_STATUS_NORMAL),0);
+            AttackModule::clear_all(module_accessor);
         }
     }
     else if WorkModule::get_int(module_accessor,FIGHTER_JACK_INSTANCE_WORK_ID_INT_PERSONA_KIND) == PERSONA_KIND_YOSHITSUNE {
@@ -348,7 +345,8 @@ pub unsafe fn effect_special_s1(fighter: &mut L2CAgentBase) {
         }
         if(WorkModule::get_int(module_accessor,FIGHTER_JACK_INSTANCE_WORK_ID_INT_PERSONA_KIND) == PERSONA_KIND_ARSENE
         || WorkModule::get_int(module_accessor,FIGHTER_JACK_INSTANCE_WORK_ID_INT_PERSONA_KIND) == PERSONA_KIND_SATANAEL
-        || WorkModule::get_int(module_accessor,FIGHTER_JACK_INSTANCE_WORK_ID_INT_PERSONA_KIND) == PERSONA_KIND_RAOUL){
+        || WorkModule::get_int(module_accessor,FIGHTER_JACK_INSTANCE_WORK_ID_INT_PERSONA_KIND) == PERSONA_KIND_RAOUL
+        || WorkModule::get_int(module_accessor,FIGHTER_JACK_INSTANCE_WORK_ID_INT_PERSONA_KIND) == PERSONA_KIND_OKUNINUSHI){
             frame(Frame=13)
             if(is_excute){
                 EFFECT(hash40("jack_eiha_finger"), hash40("havel"), 1, 1, 0, 0, 0, 0, 0.2, 0, 0, 0, 0, 0, 0, true)

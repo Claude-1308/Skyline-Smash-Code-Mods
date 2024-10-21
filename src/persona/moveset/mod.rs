@@ -7,6 +7,11 @@ use smash::app::*;
 use smash_script::macros::*;
 use smash_script::lua_args;
 use smashline::*;
+use skyline::hooks::InlineCtx;
+use std::arch::asm;
+use skyline::nn::ro::LookupSymbol;
+use skyline::hooks::{Region,getRegionAddress};
+use crate::FIGHTER_MANAGER;
 
 mod api;
 use api::*;
@@ -124,7 +129,106 @@ unsafe fn play_se_jack_replace(weapon: *mut smash::app::Weapon, mut sound: Hash4
     original!()(weapon,sound)
 }
 
+#[derive(Clone, Copy, Debug)]
+#[repr(C)]
+pub struct FighterInfo {
+    unk_ptr1: *const (),
+    unk_ptr2: *const (),
+    unk1: [u8; 0x20],
+    unk2: [u8; 0x20],
+    unk3: [u8; 0x8],
+    fighter_id: u32,
+    unk4: [u8; 0x8],
+    fighter_slot: u32,
+}
+
+pub fn acquire_fighter_info(index: usize) -> FighterInfo {
+	unsafe {
+		let global_thingy = (skyline::hooks::getRegionAddress(Region::Text) as usize + 0x5322680) as *const *const usize;
+		let player_info = *((*global_thingy).byte_add(index * 8 + 0xE8)) as *const FighterInfo;
+		*player_info
+	}
+}
+
+/*#[skyline::hook(offset = 0x2140d90, inline)]
+unsafe fn prepare_movie(ctx: &mut InlineCtx) {
+	let _fighter_manager = *ctx.registers[0].x.as_ref() as *const ();
+	let fighter = *ctx.registers[19].x.as_ref() as *mut L2CFighterCommon;
+	let hash = ctx.registers[1].x.as_mut();
+	if *hash == hash40("prebuilt:/movie/fighter/jack/c00/final_00.h264") {
+		let player_slot = WorkModule::get_int((*fighter).module_accessor, *FIGHTER_INSTANCE_WORK_ID_INT_COLOR);
+		*hash = hash40(&format!("prebuilt:/movie/fighter/jack/c{:02}/final_00.h264", player_slot));
+	} else if *hash == hash40("prebuilt:/movie/fighter/jack/c00/final_01.h264") {
+		let player_slot = WorkModule::get_int((*fighter).module_accessor, *FIGHTER_INSTANCE_WORK_ID_INT_COLOR);
+		*hash = hash40(&format!("prebuilt:/movie/fighter/jack/c{:02}/final_01.h264", player_slot));
+	}
+}*/
+
+#[skyline::hook(offset = 0xb2fadc, inline)]
+unsafe fn handle_joker_00(ctx: &mut InlineCtx) {
+	let this_arg = *ctx.registers[19].x.as_ref() as *const ();
+	let player_index = *(this_arg.byte_add(0x10) as *const i32);
+	let player_slot = acquire_fighter_info(player_index as usize).fighter_slot;
+	*ctx.registers[1].x.as_mut() = hash40(&format!("prebuilt:/movie/fighter/jack/c{:02}/final_00.h264", player_slot));
+}
+
+#[skyline::hook(offset = 0xb2fba0, inline)]
+unsafe fn handle_joker_01(ctx: &mut InlineCtx) {
+	let this_arg = *ctx.registers[19].x.as_ref() as *const ();
+	let player_index = *(this_arg.byte_add(0x10) as *const i32);
+	let player_slot = acquire_fighter_info(player_index as usize).fighter_slot;
+	*ctx.registers[1].x.as_mut() = hash40(&format!("prebuilt:/movie/fighter/jack/c{:02}/final_01.h264", player_slot));
+}
+
+#[status_script(agent = "jack", status = FIGHTER_JACK_STATUS_KIND_FINAL_READY, condition = LUA_SCRIPT_STATUS_FUNC_STATUS_MAIN)]
+pub unsafe fn final_ready_main(fighter: &mut L2CFighterCommon) -> L2CValue {
+    WorkModule::off_flag(fighter.module_accessor,*FIGHTER_JACK_STATUS_FINAL_FLAG_CLEAR_SLOW);
+    AreaModule::set_whole(fighter.module_accessor,false);
+    GroundModule::correct(fighter.module_accessor,GroundCorrectKind(*GROUND_CORRECT_KIND_AIR));
+    ItemModule::set_have_item_visibility(fighter.module_accessor,false,0);
+    WorkModule::on_flag(fighter.module_accessor,*FIGHTER_INSTANCE_WORK_ID_FLAG_NO_DEAD);
+    MotionModule::change_motion(fighter.module_accessor,Hash40::new("final_hit"),0.0,1.0,false,0.0,false,false);
+    WorkModule::set_int(fighter.module_accessor,MotionModule::end_frame(fighter.module_accessor) as i32,*FIGHTER_JACK_STATUS_FINAL_INT_DASH_FRAME);
+    let fighter_ptr = fighter.global_table[0x4].get_ptr() as *mut smash::app::Fighter;
+    FighterSpecializer_Jack::call_final_module(fighter_ptr,*FIGHTER_JACK_FINAL_MODULE_READY_INIT);
+    let color_id = WorkModule::get_int(fighter.module_accessor,*FIGHTER_INSTANCE_WORK_ID_INT_COLOR);
+    let fighter_manager = *(FIGHTER_MANAGER as *mut *mut smash::app::FighterManager);
+    if WorkModule::is_flag(fighter.module_accessor,*FIGHTER_JACK_INSTANCE_WORK_ID_FLAG_FIXED_MOVIE) == false {
+        let rnd_gen = sv_math::rand(hash40("fighter"),100);
+        let rnd_num = WorkModule::get_param_int(fighter.module_accessor,hash40("param_final"),hash40("movie_01_prob"));
+        if rnd_num < rnd_gen {
+            smash::app::lua_bind::FighterManager::prepare_movie(fighter_manager,Hash40::new(&format!("prebuilt:/movie/fighter/jack/c{:02}/final_00.h264", color_id)));
+        }
+        else {
+            smash::app::lua_bind::FighterManager::prepare_movie(fighter_manager,Hash40::new(&format!("prebuilt:/movie/fighter/jack/c{:02}/final_01.h264", color_id)));
+        }
+    }
+    else {
+        smash::app::lua_bind::FighterManager::prepare_movie(fighter_manager,Hash40::new(&format!("prebuilt:/movie/fighter/jack/c{:02}/final_01.h264", color_id)));
+    }
+    WorkModule::set_int(fighter.module_accessor,*FIGHTER_MOVIE_STATUS_KIND_PREPARE,*FIGHTER_JACK_STATUS_FINAL_INT_MOVIE_STATUS);
+    fighter.sub_shift_status_main(L2CValue::Ptr(final_ready_main_loop as *const () as _))
+}
+
+unsafe fn final_ready_main_loop(fighter: &mut L2CFighterCommon) -> L2CValue {
+    if MotionModule::is_end(fighter.module_accessor) {
+        let fighter_manager = *(FIGHTER_MANAGER as *mut *mut smash::app::FighterManager);
+        if smash::app::lua_bind::FighterManager::is_prepared_movie(fighter_manager) {
+            fighter.change_status(FIGHTER_JACK_STATUS_KIND_FINAL_SCENE01.into(),false.into());
+        }
+    }
+    return L2CValue::I32(0)
+}
+
 pub fn install() {
+    unsafe {
+        LookupSymbol(
+            &mut FIGHTER_MANAGER,
+            "_ZN3lib9SingletonIN3app14FighterManagerEE9instance_E\u{0}"
+            .as_bytes()
+            .as_ptr(),
+        );
+    }
     install_acmd_scripts!(
         attack_11,
         doyle_effect_11,
@@ -175,18 +279,20 @@ pub fn install() {
     install_status_scripts!(
         wait_pre,
         fire_fly_main,
-        fire2_fly_main
+        fire2_fly_main,
+        //final_ready_main
     );
     install_agent_frames!(
         joker,
         arsene,
     );
-    skyline::install_hook!(play_se_jack_replace);
-    unsafe {
-        let slots = JackModule::get_params("param_private","tot_slots") as i32;
-        for i in 0..slots {
-            let hash_word: String = "fighter/jack/model/body/c0".to_owned() + &i.to_string() + "/kasumi.nutexb";
-            my_callback::install(arcropolis_api::Hash40(hash40(&hash_word)),0x989680);
-        }
+    skyline::install_hooks!(
+        play_se_jack_replace
+        //handle_joker_00,
+        //handle_joker_01
+    );
+    for i in 0..50 {
+        let hash_word: String = "fighter/jack/model/body/c0".to_owned() + &i.to_string() + "/kasumi.nutexb";
+        my_callback::install(arcropolis_api::Hash40(hash40(&hash_word)),0x989680);
     }
 }

@@ -11,16 +11,6 @@ pub mod JackModule {
     
     use crate::moveset::*;
 
-    use parking_lot::RwLock;
-    use lazy_static::*;
-    
-    lazy_static! {
-        pub static ref JACK_PARAMS: RwLock<HashMap<String, HashMap<String, f32>>> = RwLock::new({
-            let json_string = std::fs::read_to_string("sd:/ultimate/mods/personas/fighter/jack/param/param.json").unwrap();
-            serde_json::from_str(json_string.as_str()).unwrap()
-        });
-    }
-
     pub unsafe fn decide_box_property(persona_kind: i32) -> (u64,i32) {
         match persona_kind {
             PERSONA_KIND_ARSENE | PERSONA_KIND_SATANAEL | PERSONA_KIND_RAOUL => {
@@ -58,16 +48,5 @@ pub mod JackModule {
         else {
             return false;
         }
-    }
-
-    pub unsafe fn get_params(param_type: &str, param: &str) -> f32 {
-        return *JACK_PARAMS.read().get(param_type).and_then(|private| private.get(param)).unwrap();
-    }
-      
-    pub unsafe fn reload_params() {
-        *JACK_PARAMS.write() = {
-            let json_string = std::fs::read_to_string("sd:/ultimate/mods/personas/fighter/jack/param/param.json").unwrap();
-            serde_json::from_str(json_string.as_str()).unwrap()
-        };
     }
 }
