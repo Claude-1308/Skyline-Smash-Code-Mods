@@ -31,7 +31,7 @@ pub unsafe fn fire_fly_main(weapon: &mut L2CFighterBase) -> L2CValue {
     || WorkModule::get_int(owner_module_accessor,FIGHTER_JACK_INSTANCE_WORK_ID_INT_PERSONA_KIND) == PERSONA_KIND_VANADIS
     || WorkModule::get_int(owner_module_accessor,FIGHTER_JACK_INSTANCE_WORK_ID_INT_PERSONA_KIND) == PERSONA_KIND_ELLA
     || WorkModule::get_int(owner_module_accessor,FIGHTER_JACK_INSTANCE_WORK_ID_INT_PERSONA_KIND) == PERSONA_KIND_KAGUYA {
-        speed = JackModule::get_params("param_fire","speed");
+        speed = 4.8
     }
     let corrected_speed_x = speed * PostureModule::lr(owner_module_accessor) * angle.to_radians().cos();
     let corrected_speed_y = speed * angle.to_radians().sin();
@@ -80,18 +80,18 @@ pub unsafe fn fire2_fly_main(weapon: &mut L2CFighterBase) -> L2CValue {
     let owner_module_accessor = sv_battle_object::module_accessor((WorkModule::get_int(module_accessor, *WEAPON_INSTANCE_WORK_ID_INT_LINK_OWNER)) as u32);
     let owner_owner_module_accessor = sv_battle_object::module_accessor((WorkModule::get_int(module_accessor, *WEAPON_INSTANCE_WORK_ID_INT_LINK_OWNER)) as u32);
     if WorkModule::get_int(owner_owner_module_accessor,FIGHTER_JACK_INSTANCE_WORK_ID_INT_PERSONA_KIND) == PERSONA_KIND_FORTUNA {
-        angle = JackModule::get_params("param_fire2","angle_fortuna");
+        angle = -11.0
     }
     if WorkModule::get_int(owner_owner_module_accessor,FIGHTER_JACK_INSTANCE_WORK_ID_INT_PERSONA_KIND) == PERSONA_KIND_SETANTA
     || WorkModule::get_int(owner_owner_module_accessor,FIGHTER_JACK_INSTANCE_WORK_ID_INT_PERSONA_KIND) == PERSONA_KIND_MESSIAH {
-        angle = JackModule::get_params("param_fire2","angle_2");
+        angle = -5.0;
     }
     if WorkModule::get_int(owner_owner_module_accessor,FIGHTER_JACK_INSTANCE_WORK_ID_INT_PERSONA_KIND) == PERSONA_KIND_FORTUNA {
-        speed = JackModule::get_params("param_fire2","speed_fortuna");
+        speed = 6.0;
     }
     let mut life = WorkModule::get_param_int(module_accessor,hash40("param_fire2"),hash40("life"));
     if WorkModule::get_int(owner_owner_module_accessor,FIGHTER_JACK_INSTANCE_WORK_ID_INT_PERSONA_KIND) == PERSONA_KIND_FORTUNA {
-        life = JackModule::get_params("param_fire2","life_fortuna") as i32;
+        life = 14;
     }
     WorkModule::set_int(module_accessor,life,*WEAPON_INSTANCE_WORK_ID_INT_LIFE);
     WorkModule::set_int(module_accessor,life,*WEAPON_INSTANCE_WORK_ID_INT_INIT_LIFE);

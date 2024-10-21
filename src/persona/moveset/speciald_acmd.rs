@@ -127,8 +127,7 @@ pub unsafe fn special_lw(fighter: &mut L2CAgentBase) {
         PERSONA_KIND_YOSHITSUNE => {
             sv_animcmd::frame(lua_state,4.0);
             if is_excute(fighter) {
-                let dmg_mul = JackModule::get_params("param_special_lw","yoshitsune_dmg_mul");
-                DamageModule::set_damage_mul(module_accessor,dmg_mul);
+                DamageModule::set_damage_mul(module_accessor,0.5);
                 smash_script::damage!(fighter,*MA_MSC_DAMAGE_DAMAGE_NO_REACTION,*DAMAGE_NO_REACTION_MODE_ALWAYS,0);
             }
             sv_animcmd::frame(lua_state,32.0);
